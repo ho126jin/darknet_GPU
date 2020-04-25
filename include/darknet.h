@@ -38,7 +38,7 @@ extern pthread_mutex_t * mutex_t;
 extern int * cond_i;
 #endif
 
-FILE *fp;
+FILE *fileP;
 
 /*��Ÿ������*/
 typedef struct{

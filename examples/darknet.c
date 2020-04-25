@@ -453,8 +453,8 @@ int main()
     network *alexNetwork[n_alex];
 
     int n_all = n_des+n_res+n_vgg+n_alex;
-    fp = fopen("result.txt","a");
-    fprintf(fp,"*****Alex : %d , VGG : %d, Res : %d , Des : %d*****\n",n_alex,n_vgg,n_res,n_des);
+    fileP = fopen("result.txt","a");
+    fprintf(fileP,"*****Alex : %d , VGG : %d, Res : %d , Des : %d*****\n",n_alex,n_vgg,n_res,n_des);
 
 #ifdef THREAD
     //변수 동적할당
@@ -468,21 +468,21 @@ int main()
         pthread_mutex_init(&mutex_t[i], NULL);
         cond_i[i] = 0;
     }
-    if(fp){
-        fprintf(fp,"////////////////////////////////////////////////////////////THREAD ON : THPOOL %d\n",THREAD_NUM_POOL);
+    if(fileP){
+        fprintf(fileP,"////////////////////////////////////////////////////////////THREAD ON : THPOOL %d\n",THREAD_NUM_POOL);
     }else{
         fprintf(stderr,"file open error");
         exit(1);
     }
 #else
-    if(fp){
-        fprintf(fp,"////////////////////////////////////////////////////////////THREAD OFF\n");
+    if(fileP){
+        fprintf(fileP,"////////////////////////////////////////////////////////////THREAD OFF\n");
     }else{
         fprintf(stderr,"file open error");
         exit(1);
     }  
 #endif
-    fclose(fp);
+    fclose(fileP);
     /*
     for(unsigned int k=0; k<n_net; k++){
         denseNetwork[k] = (network *)load_network("cfg/densenet201.cfg", "densenet201.weights",0);
@@ -502,7 +502,7 @@ int main()
     }
 
     for(unsigned int k=0;k<n_vgg;k++){
-        vggNetwork[k] = (network *)load_network("cfg/vgg-16.cfg","vgg16.weights",0);
+        vggNetwork[k] = (network *)load_network("cfg/vgg-16.cfg","vgg-16.weights",0);
         vggNetwork[k]->index_n = k+n_alex;
     }
 
@@ -635,14 +635,14 @@ int main()
     for(i=0; i<THREAD_NUM_POOL;i++)
 	    pthread_join(thpool->threads[i]->pthread, NULL);
 #endif
-    fp = fopen("result.txt","a");
-    if(fp){
-        fprintf(fp, "\nexecution Time : %lf\n\n\n", what_time_is_it_now() - time);
+    fileP = fopen("result.txt","a");
+    if(fileP){
+        fprintf(fileP, "\nexecution Time : %lf\n\n\n", what_time_is_it_now() - time);
     }else{
         fprintf(stderr,"file open error");
         exit(1);
     }
-    fclose(fp); 
+    fclose(fileP); 
     free(cond_t);
     free(mutex_t);
     free(cond_i);
