@@ -635,7 +635,7 @@ int main()
     for(i=0; i<THREAD_NUM_POOL;i++)
 	    pthread_join(thpool->threads[i]->pthread, NULL);
 #endif
-    FILE *fileP = fopen("result.txt","a");
+    fileP = fopen("result.txt","a");
     if(fileP){
         fprintf(fileP, "\nexecution Time : %lf\n\n\n", what_time_is_it_now() - time);
     }else{
