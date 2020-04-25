@@ -638,7 +638,7 @@ void* predict_classifier2(test * input){
         time2 = what_time_is_it_now();
         fprintf(stderr, "network : %s: Predicted in %lf seconds.\n", input->netName, time2 - time);
         //hojin file
-        fileP = fopen("result.txt","a");
+        FILE *fileP = fopen("result.txt","a");
         
         if(fileP){
             fprintf(fileP, "network : %s: Predicted in %lf seconds.\n", input->netName, time2 - time);

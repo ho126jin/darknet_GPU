@@ -453,7 +453,7 @@ int main()
     network *alexNetwork[n_alex];
 
     int n_all = n_des+n_res+n_vgg+n_alex;
-    fileP = fopen("result.txt","a");
+    FILE *fileP = fopen("result.txt","a");
     fprintf(fileP,"*****Alex : %d , VGG : %d, Res : %d , Des : %d*****\n",n_alex,n_vgg,n_res,n_des);
 
 #ifdef THREAD
@@ -635,7 +635,7 @@ int main()
     for(i=0; i<THREAD_NUM_POOL;i++)
 	    pthread_join(thpool->threads[i]->pthread, NULL);
 #endif
-    fileP = fopen("result.txt","a");
+    FILE *fileP = fopen("result.txt","a");
     if(fileP){
         fprintf(fileP, "\nexecution Time : %lf\n\n\n", what_time_is_it_now() - time);
     }else{
