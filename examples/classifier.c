@@ -616,9 +616,6 @@ void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *fi
 void* predict_classifier2(test * input){
     image im = load_image_color((char *)input->input_path, 0, 0);
     network *net = input->net;
-
-    //hoijn ADD FOR
-    for(int i=0;i<n_loop;i++){
         set_batch_network(net, 1);
         srand(2222222);
 
@@ -626,7 +623,7 @@ void* predict_classifier2(test * input){
 
         int i = 0;
         char **names = input->names;
-        double time = what_time_is_it_now();
+        double time = what_time_is_it_now(),time2;
         int *indexes = calloc(top, sizeof(int));
 
 
@@ -638,16 +635,26 @@ void* predict_classifier2(test * input){
         if (net->hierarchy)
             hierarchy_predictions(predictions, net->outputs, net->hierarchy, 1, 1);
         top_k(predictions, net->outputs, top, indexes);
-        fprintf(stderr, "network : %s: Predicted in %lf seconds.\n", input->netName, what_time_is_it_now() - time);
+        time2 = what_time_is_it_now();
+        fprintf(stderr, "network : %s: Predicted in %lf seconds.\n", input->netName, time2 - time);
+        //hojin file
+        fp = fopen("result.txt","a");
+        
+        if(fp){
+            fprintf(fp, "network : %s: Predicted in %lf seconds.\n", input->netName, time2 - time);
+        }else{
+            fprintf(stderr,"file open error\n");
+            exit(1);
+        }
+                    
         for (i = 0; i < top; ++i)
         {
             int index = indexes[i];
-
             printf("%5.2f%%: %s\n", predictions[index] * 100, names[index]);
         }
         if (r.data != im.data)
             free_image(r);
-    }
+    fclose(fp);
     free_image(im);
     free_network(net);
     free(input);
