@@ -1,0 +1,72 @@
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD ON : THPOOL 8
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD ON : THPOOL 8
+network : Alex: Predicted in 0.777614 seconds.
+network : Alex: Predicted in 0.780645 seconds.
+network : Dense: Predicted in 2.234385 seconds.
+network : Dense: Predicted in 2.628534 seconds.
+network : Res: Predicted in 4.635908 seconds.
+network : VGG: Predicted in 4.741722 seconds.
+network : VGG: Predicted in 4.921914 seconds.
+network : Res: Predicted in 5.260159 seconds.
+
+execution Time : 5.373330
+
+
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD OFF
+network : Alex: Predicted in 0.777798 seconds.
+network : Alex: Predicted in 0.820128 seconds.
+network : VGG: Predicted in 0.924002 seconds.
+network : VGG: Predicted in 0.918467 seconds.
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD OFF
+network : Alex: Predicted in 1.314138 seconds.
+network : Alex: Predicted in 1.324490 seconds.
+network : VGG: Predicted in 1.480885 seconds.
+network : VGG: Predicted in 1.485468 seconds.
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD OFF
+network : Alex: Predicted in 0.800544 seconds.
+network : Alex: Predicted in 0.810110 seconds.
+network : VGG: Predicted in 0.931011 seconds.
+network : VGG: Predicted in 0.939033 seconds.
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD OFF
+network : Alex: Predicted in 0.799153 seconds.
+network : Alex: Predicted in 0.813963 seconds.
+network : VGG: Predicted in 0.952825 seconds.
+network : VGG: Predicted in 0.952000 seconds.
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD OFF
+network : Alex: Predicted in 0.763676 seconds.
+network : Alex: Predicted in 0.769534 seconds.
+network : VGG: Predicted in 0.893615 seconds.
+network : VGG: Predicted in 0.894022 seconds.
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD OFF
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD OFF
+network : Alex: Predicted in 0.859728 seconds.
+network : Alex: Predicted in 0.871532 seconds.
+network : VGG: Predicted in 0.985511 seconds.
+network : VGG: Predicted in 0.987468 seconds.
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD OFF
+network : Alex: Predicted in 0.774929 seconds.
+network : Alex: Predicted in 0.785053 seconds.
+network : VGG: Predicted in 0.949759 seconds.
+network : VGG: Predicted in 0.954181 seconds.
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD OFF
+network : Alex: Predicted in 0.887377 seconds.
+network : Alex: Predicted in 0.895957 seconds.
+network : VGG: Predicted in 1.084397 seconds.
+network : VGG: Predicted in 1.089920 seconds.
+*****Alex : 2 , VGG : 2, Res : 2 , Des : 2*****
+////////////////////////////////////////////////////////////THREAD OFF
+network : Alex: Predicted in 0.831900 seconds.
+network : Alex: Predicted in 0.844308 seconds.
+network : VGG: Predicted in 0.997802 seconds.
+network : VGG: Predicted in 1.005077 seconds.
