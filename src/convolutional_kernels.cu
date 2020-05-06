@@ -115,7 +115,9 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
             float *im = net.input_gpu + (i*l.groups + j)*l.c/l.groups*l.h*l.w;
 
             if (l.size == 1){
+		fprintf(stderr , "%d - size==1 start\n", net.index_n);
                 b = im;
+		fprintf(stderr , "%d - size==1 end\n", net.index_n);
             } else {
 	    	fprintf(stderr , "%d - im2col start\n", net.index_n);
                 im2col_gpu(im, l.c/l.groups, l.h, l.w, l.size, l.stride, l.pad, b);

@@ -532,14 +532,21 @@ int main()
     test *net_input_des[n_des];
     test *net_input_res[n_res];
 
-    while(1){
+#if 0
+    while (1)
+    {
         printf("Enter Image Path: ");
         fflush(stdout);
         input = fgets(input, 256, stdin);
-        if(!input) continue;
+        if (!input)
+            continue;
         strtok(input, "\n");
         break;
     }
+#endif
+
+    char * filename = "data/eagle.jpg";
+    strncpy(input, filename, 256);
 
     image im = load_image_color(buff, 0, 0);
 

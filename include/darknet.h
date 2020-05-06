@@ -27,10 +27,10 @@ extern int gpu_index;
 extern threadpool thpool;
 #define THREAD_NUM_POOL 8
 #define n_net 2 //hojin 8->2
-#define n_vgg 2
-#define n_alex 2
+#define n_vgg 0
+#define n_alex 0
 #define n_res 2
-#define n_des 2     //hojin cpu
+#define n_des 2    //hojin cpu
 #define n_loop 4 //hojin # of loop in classifier2
 #ifdef THREAD
 extern pthread_cond_t * cond_t;
