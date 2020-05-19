@@ -29,14 +29,25 @@ layer make_connected_layer(int batch, int inputs, int outputs, ACTIVATION activa
     l.out_w = 1;
     l.out_c = outputs;
 
-    l.output = calloc(batch*outputs, sizeof(float));
-    l.delta = calloc(batch*outputs, sizeof(float));
+    #if 0
+        cuda_malloc_float_host(&l.output, batch*outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.delta, batch*outputs*sizeof(float), __LINE__);
+        
+        cuda_malloc_float_host(&l.weight_updates, inputs*outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.bias_updates, outputs*sizeof(float), __LINE__);
+        
+        cuda_malloc_float_host(&l.weights, outputs*inputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.biases, outputs*sizeof(float), __LINE__);
+    #else
+        l.output = calloc(batch*outputs, sizeof(float));
+        l.delta = calloc(batch*outputs, sizeof(float));
 
-    l.weight_updates = calloc(inputs*outputs, sizeof(float));
-    l.bias_updates = calloc(outputs, sizeof(float));
+        l.weight_updates = calloc(inputs*outputs, sizeof(float));
+        l.bias_updates = calloc(outputs, sizeof(float));
 
-    l.weights = calloc(outputs*inputs, sizeof(float));
-    l.biases = calloc(outputs, sizeof(float));
+        l.weights = calloc(outputs*inputs, sizeof(float));
+        l.biases = calloc(outputs, sizeof(float));
+    #endif
 
     l.forward = forward_connected_layer;
     l.backward = backward_connected_layer;
@@ -55,6 +66,35 @@ layer make_connected_layer(int batch, int inputs, int outputs, ACTIVATION activa
         l.biases[i] = 0;
     }
 
+#if 0
+
+    if(adam){
+        cuda_malloc_float_host(&l.m, l.inputs*l.outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.v, l.inputs*l.outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.bias_m, l.outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.scale_m, l.outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.bias_v, l.outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.scale_v, l.outputs*sizeof(float), __LINE__);
+    }
+    if(batch_normalize){
+        l.scales = calloc(outputs, sizeof(float));
+        l.scale_updates = calloc(outputs, sizeof(float));
+        for(i = 0; i < outputs; ++i){
+            l.scales[i] = 1;
+        }
+
+        cuda_malloc_float_host(&l.mean, outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.variance, outputs*sizeof(float), __LINE__);
+
+        cuda_malloc_float_host(&l.mean_delta, outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.variance_delta, outputs*sizeof(float), __LINE__);
+
+        cuda_malloc_float_host(&l.rolling_mean, outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.rolling_variance, outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.x, batch*outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.x_norm, batch*outputs*sizeof(float), __LINE__);
+    }
+#else
     if(adam){
         l.m = calloc(l.inputs*l.outputs, sizeof(float));
         l.v = calloc(l.inputs*l.outputs, sizeof(float));
@@ -81,6 +121,7 @@ layer make_connected_layer(int batch, int inputs, int outputs, ACTIVATION activa
         l.x = calloc(batch*outputs, sizeof(float));
         l.x_norm = calloc(batch*outputs, sizeof(float));
     }
+#endif
 
 #ifdef GPU
     l.forward_gpu = forward_connected_layer_gpu;
@@ -338,7 +379,7 @@ void forward_connected_layer_gpu(layer l, network net)
 }
 
 #ifdef THREAD
-void forward_connected_layer_gpu_thread(netlayer * input){
+void forward_connected_layer_gpu_thread(netlayer * input, int id){
     
      
     network net = input->net;
@@ -355,7 +396,11 @@ void forward_connected_layer_gpu_thread(netlayer * input){
     gemm_gpu(0,1,m,n,k,1,a,k,b,k,1,c,n);
 
     if (l.batch_normalize) {
-        forward_batchnorm_layer_gpu(l, net);
+         #ifndef STREAM
+            forward_batchnorm_layer_gpu(l, net);
+        #else
+            forward_batchnorm_layer_gpu_stream(l, net, id);
+        #endif
     } else {
         add_bias_gpu(l.output_gpu, l.biases_gpu, l.batch, l.outputs, 1);
     }

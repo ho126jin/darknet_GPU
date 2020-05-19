@@ -1,15 +1,15 @@
 #ifndef _THPOOL_
 #define _THPOOL_
 #ifdef __cplusplus
-   extern "C" {
+extern "C"
+{
 #endif
 
-	   /* =================================== API ======================================= */
+	/* =================================== API ======================================= */
 
+	typedef struct thpool_ *threadpool;
 
-	   typedef struct thpool_* threadpool;
-
-	   /**
+	/**
 		  * @brief  Initialize threadpool
 		   *
 		    * Initializes a threadpool. This function will not return until all
@@ -26,10 +26,9 @@
 					   * @return threadpool    created threadpool on success,
 					    *                       NULL on error
 						 */
-extern	   threadpool thpool_init(int num_threads);
+	extern threadpool thpool_init(int num_threads);
 
-
-	   /**
+	/**
 		  * @brief Add work to the job queue
 		   *
 		    * Takes an action and its argument and adds it to the threadpool's job queue.
@@ -56,10 +55,9 @@ extern	   threadpool thpool_init(int num_threads);
 								 * @param  arg_p         pointer to an argument
 								  * @return 0 on successs, -1 otherwise.
 								   */
-extern	   int thpool_add_work(threadpool, void (*function_p)(void*), void* arg_p);
+	extern int thpool_add_work(threadpool, void (*function_p)(void *), void *arg_p);
 
-
-	   /**
+	/**
 		  * @brief Wait for all queued jobs to finish
 		   *
 		    * Will wait for all jobs - both queued and currently running to finish.
@@ -86,10 +84,9 @@ extern	   int thpool_add_work(threadpool, void (*function_p)(void*), void* arg_p
 								 * @param threadpool     the threadpool to wait for
 								  * @return nothing
 								   */
-extern	   void thpool_wait(threadpool);
+	extern void thpool_wait(threadpool);
 
-
-	   /**
+	/**
 		  * @brief Pauses all threads immediately
 		   *
 		    * The threads will be paused no matter if they are idle or working.
@@ -110,10 +107,9 @@ extern	   void thpool_wait(threadpool);
 						   * @param threadpool    the threadpool where the threads should be paused
 						    * @return nothing
 							 */
-extern	   void thpool_pause(threadpool);
+	extern void thpool_pause(threadpool);
 
-
-	   /**
+	/**
 		  * @brief Unpauses all threads if they are paused
 		   *
 		    * @example
@@ -126,10 +122,9 @@ extern	   void thpool_pause(threadpool);
 				   * @param threadpool     the threadpool where the threads should be unpaused
 				    * @return nothing
 					 */
-extern	   void thpool_resume(threadpool);
+	extern void thpool_resume(threadpool);
 
-
-	   /**
+	/**
 		  * @brief Destroy the threadpool
 		   *
 		    * This will wait for the currently active threads to finish and then 'kill'
@@ -148,10 +143,9 @@ extern	   void thpool_resume(threadpool);
 						 * @param threadpool     the threadpool to destroy
 						  * @return nothing
 						   */
-extern	   void thpool_destroy(threadpool);
+	extern void thpool_destroy(threadpool);
 
-
-	   /**
+	/**
 		  * @brief Show currently working threads
 		   *
 		    * Working threads are the threads that are performing work (not idle).
@@ -169,73 +163,108 @@ extern	   void thpool_destroy(threadpool);
 					    * @param threadpool     the threadpool of interest
 						 * @return integer       number of threads working
 						  */
-extern	   int thpool_num_threads_working(threadpool);
+	extern int thpool_num_threads_working(threadpool);
 
 #if 1 // 2020 0206 hojin
-/* ========================== STRUCTURES ============================ */
+	/* ========================== STRUCTURES ============================ */
 
+	typedef enum
+	{
+		CONVOLUTIONAL,
+		DECONVOLUTIONAL,
+		CONNECTED,
+		MAXPOOL,
+		SOFTMAX,
+		DETECTION,
+		DROPOUT,
+		CROP,
+		ROUTE,
+		COST,
+		NORMALIZATION,
+		AVGPOOL,
+		LOCAL,
+		SHORTCUT,
+		ACTIVE,
+		RNN,
+		GRU,
+		LSTM,
+		CRNN,
+		BATCHNORM,
+		NETWORK,
+		XNOR,
+		REGION,
+		YOLO,
+		ISEG,
+		REORG,
+		UPSAMPLE,
+		LOGXENT,
+		L2NORM,
+		BLANK
+	} LAYER_TYPE;
 
-/* Binary semaphore */
-typedef struct bsem {
-	pthread_mutex_t mutex;
-	pthread_cond_t   cond;
-	int v;
-} bsem;
+	/* Binary semaphore */
+	typedef struct bsem
+	{
+		pthread_mutex_t mutex;
+		pthread_cond_t cond;
+		int v;
+	} bsem;
 
+	/* Job */
+	typedef struct job
+	{
+		struct job *prev;			 /* pointer to previous job   */
+		void (*function)(void *arg); /* function pointer          */
+		void *arg;					 /* function's argument       */
+		int flag;
+	} job;
 
-/* Job */
-typedef struct job{
-	struct job*  prev;                   /* pointer to previous job   */
-	void   (*function)(void* arg);       /* function pointer          */
-	void*  arg;                          /* function's argument       */
-} job;
-
-
-/* Job queue */
-typedef struct jobqueue{
-	pthread_mutex_t rwmutex;             /* used for queue r/w access */
-	job  *front;                         /* pointer to front of queue */
-	job  *rear;                          /* pointer to rear  of queue */
-	bsem *has_jobs;                      /* flag as binary semaphore  */
-	int   len;                           /* number of jobs in queue   */
-} jobqueue;
-
-
+	/* Job queue */
+	typedef struct jobqueue
+	{
+		pthread_mutex_t rwmutex; /* used for queue r/w access */
+		job *front;				 /* pointer to front of queue */
+		job *rear;				 /* pointer to rear  of queue */
+		bsem *has_jobs;			 /* flag as binary semaphore  */
+		int len;				 /* number of jobs in queue   */
+	} jobqueue;
 
 #define CPU_FLAG 0
 #define GPU_FLAG 1
 
-/* Thread */
-typedef struct thread{
-	int       id;                        /* friendly id               */
-	pthread_t pthread;                   /* pointer to actual thread  */
-	struct thpool_* thpool_p;            /* access to thpool          */
-	int flag;
-} thread;
+	/* Thread */
+	typedef struct thread
+	{
+		int id;					  /* friendly id               */
+		pthread_t pthread;		  /* pointer to actual thread  */
+		struct thpool_ *thpool_p; /* access to thpool          */
+		int flag;
+	} thread;
 
+	/* Threadpool */
+	typedef struct thpool_
+	{
+		thread **threads;				  /* pointer to threads        */
+		volatile int num_threads_alive;	  /* threads currently alive   */
+		volatile int num_threads_working; /* threads currently working */
+		pthread_mutex_t thcount_lock;	  /* used for thread count etc */
+		pthread_cond_t threads_all_idle;  /* signal to thpool_wait     */
+		jobqueue jobqueue;				  /* job queue                 */
+	} thpool_;
 
-/* Threadpool */
-typedef struct thpool_{
-	thread**   threads;                  /* pointer to threads        */
-	volatile int num_threads_alive;      /* threads currently alive   */
-	volatile int num_threads_working;    /* threads currently working */
-	pthread_mutex_t  thcount_lock;       /* used for thread count etc */
-	pthread_cond_t  threads_all_idle;    /* signal to thpool_wait     */
-	jobqueue  jobqueue;                  /* job queue                 */
-} thpool_;
-
-typedef struct _netlayer netlayer;
-
-typedef struct th_arg{
-	netlayer* arg;
-	int flag;
-}th_arg;
+	typedef struct th_arg
+	{
+		void *arg;
+		int flag;
+		LAYER_TYPE type;
+		int id;
+		int n;
+	} th_arg;
 
 #endif
 
-
 #ifdef __cplusplus
-   }
+}
 #endif
 
 #endif

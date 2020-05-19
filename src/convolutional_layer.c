@@ -88,7 +88,7 @@ static size_t get_workspace_size(layer l){
     if(gpu_index >= 0){
         size_t most = 0;
         size_t s = 0;
-        cudnnGetConvolutionForwardWorkspaceSize(cudnn_handle(),
+        cudnnGetConvolutionForwardWorkspaceSize(cudnn_handle(0, __LINE__),
                 l.srcTensorDesc,
                 l.weightDesc,
                 l.convDesc,
@@ -96,7 +96,7 @@ static size_t get_workspace_size(layer l){
                 l.fw_algo,
                 &s);
         if (s > most) most = s;
-        cudnnGetConvolutionBackwardFilterWorkspaceSize(cudnn_handle(),
+        cudnnGetConvolutionBackwardFilterWorkspaceSize(cudnn_handle(0, __LINE__),
                 l.srcTensorDesc,
                 l.ddstTensorDesc,
                 l.convDesc,
@@ -104,7 +104,7 @@ static size_t get_workspace_size(layer l){
                 l.bf_algo,
                 &s);
         if (s > most) most = s;
-        cudnnGetConvolutionBackwardDataWorkspaceSize(cudnn_handle(),
+        cudnnGetConvolutionBackwardDataWorkspaceSize(cudnn_handle(0, __LINE__),
                 l.weightDesc,
                 l.ddstTensorDesc,
                 l.convDesc,
@@ -144,8 +144,7 @@ void cudnn_convolutional_setup(layer *l)
         error("CUDNN < 7 doesn't support groups, please upgrade!");
     }
     #endif
-
-    cudnnGetConvolutionForwardAlgorithm(cudnn_handle(),
+    cudnnGetConvolutionForwardAlgorithm(cudnn_handle(0, __LINE__),
             l->srcTensorDesc,
             l->weightDesc,
             l->convDesc,
@@ -153,7 +152,7 @@ void cudnn_convolutional_setup(layer *l)
             CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
             2000000000,
             &l->fw_algo);
-    cudnnGetConvolutionBackwardDataAlgorithm(cudnn_handle(),
+    cudnnGetConvolutionBackwardDataAlgorithm(cudnn_handle(0, __LINE__),
             l->weightDesc,
             l->ddstTensorDesc,
             l->convDesc,
@@ -161,7 +160,7 @@ void cudnn_convolutional_setup(layer *l)
             CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
             2000000000,
             &l->bd_algo);
-    cudnnGetConvolutionBackwardFilterAlgorithm(cudnn_handle(),
+    cudnnGetConvolutionBackwardFilterAlgorithm(cudnn_handle(0, __LINE__),
             l->srcTensorDesc,
             l->ddstTensorDesc,
             l->convDesc,
@@ -191,22 +190,30 @@ convolutional_layer make_convolutional_layer(int batch, int h, int w, int c, int
     l.size = size;
     l.pad = padding;
     l.batch_normalize = batch_normalize;
+   
+    //2020 0311 doyoung
+#ifdef STREAM
+    cuda_malloc_float_host(&l.weights, c/groups*n*size*size*sizeof(float), __LINE__);
+    cuda_malloc_float_host(&l.weight_updates, c/groups*n*size*size*sizeof(float), __LINE__);
+
+    cuda_malloc_float_host(&l.biases, n*sizeof(float), __LINE__);
+    cuda_malloc_float_host(&l.bias_updates, n*sizeof(float), __LINE__);
+
+#else
 
     l.weights = calloc(c/groups*n*size*size, sizeof(float));
     l.weight_updates = calloc(c/groups*n*size*size, sizeof(float));
 
     l.biases = calloc(n, sizeof(float));
     l.bias_updates = calloc(n, sizeof(float));
+#endif
 
     l.nweights = c/groups*n*size*size;
     l.nbiases = n;
-
-    // float scale = 1./sqrt(size*size*c);
     float scale = sqrt(2./(size*size*c/l.groups));
-    //printf("convscale %f\n", scale);
-    //scale = .02;
-    //for(i = 0; i < c*n*size*size; ++i) l.weights[i] = scale*rand_uniform(-1, 1);
     for(i = 0; i < l.nweights; ++i) l.weights[i] = scale*rand_normal();
+    
+
     int out_w = convolutional_out_width(l);
     int out_h = convolutional_out_height(l);
     l.out_h = out_h;
@@ -215,8 +222,14 @@ convolutional_layer make_convolutional_layer(int batch, int h, int w, int c, int
     l.outputs = l.out_h * l.out_w * l.out_c;
     l.inputs = l.w * l.h * l.c;
 
+    //2020 0311 doyoung
+#ifdef STREAM
+    cuda_malloc_float_host(&l.output, l.batch*l.outputs*sizeof(float), __LINE__);
+    cuda_malloc_float_host(&l.delta, l.batch*l.outputs*sizeof(float), __LINE__);
+#else
     l.output = calloc(l.batch*l.outputs, sizeof(float));
     l.delta  = calloc(l.batch*l.outputs, sizeof(float));
+#endif
 
     l.forward = forward_convolutional_layer;
     l.backward = backward_convolutional_layer;
@@ -225,6 +238,45 @@ convolutional_layer make_convolutional_layer(int batch, int h, int w, int c, int
     l.forward_thread = forward_convolutional_layer_thread;
     #endif
 
+    //2020 0311 doyoung
+#ifdef STREAM
+    if(binary){
+        cuda_malloc_float_host(&l.binary_weights, l.nweights*sizeof(float), __LINE__);
+        cuda_malloc_int_host(&l.cweights, l.nweights*sizeof(char), __LINE__);
+        cuda_malloc_int_host(&l.scales, n*sizeof(float), __LINE__);
+    }
+    if(xnor){
+        cuda_malloc_float_host(&l.binary_weights, l.nweights*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.binary_input, l.inputs*l.batch*sizeof(float), __LINE__);
+    }
+
+    if(batch_normalize){
+        cuda_malloc_float_host(&l.scales, n*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.scale_updates, n*sizeof(float), __LINE__);
+        for(i = 0; i < n; ++i){
+            l.scales[i] = 1;
+        }
+
+        cuda_malloc_float_host(&l.mean, n*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.variance, n*sizeof(float), __LINE__);
+
+        cuda_malloc_float_host(&l.mean_delta, n*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.variance_delta, n*sizeof(float), __LINE__);
+
+        cuda_malloc_float_host(&l.rolling_mean, n*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.rolling_variance, n*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.x, l.batch*l.outputs*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.x_norm, l.batch*l.outputs*sizeof(float), __LINE__);
+    }
+    if(adam){
+        cuda_malloc_float_host(&l.m, l.nweights*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.v, l.nweights*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.bias_m, n*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.scale_m, n*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.bias_v, n*sizeof(float), __LINE__);
+        cuda_malloc_float_host(&l.scale_v, n*sizeof(float), __LINE__);
+    }
+#else
     if(binary){
         l.binary_weights = calloc(l.nweights, sizeof(float));
         l.cweights = calloc(l.nweights, sizeof(char));
@@ -234,7 +286,6 @@ convolutional_layer make_convolutional_layer(int batch, int h, int w, int c, int
         l.binary_weights = calloc(l.nweights, sizeof(float));
         l.binary_input = calloc(l.inputs*l.batch, sizeof(float));
     }
-
     if(batch_normalize){
         l.scales = calloc(n, sizeof(float));
         l.scale_updates = calloc(n, sizeof(float));
@@ -261,7 +312,7 @@ convolutional_layer make_convolutional_layer(int batch, int h, int w, int c, int
         l.bias_v = calloc(n, sizeof(float));
         l.scale_v = calloc(n, sizeof(float));
     }
-
+#endif
 #ifdef GPU
     l.forward_gpu = forward_convolutional_layer_gpu;
     #ifdef THREAD
@@ -285,6 +336,7 @@ convolutional_layer make_convolutional_layer(int batch, int h, int w, int c, int
 
         l.biases_gpu = cuda_make_array(l.biases, n);
         l.bias_updates_gpu = cuda_make_array(l.bias_updates, n);
+
         l.delta_gpu = cuda_make_array(l.delta, l.batch*out_h*out_w*n);
         l.output_gpu = cuda_make_array(l.output, l.batch*out_h*out_w*n);
 
@@ -489,11 +541,9 @@ void forward_convolutional_layer(convolutional_layer l, network net)
     activate_array(l.output, l.outputs*l.batch, l.activation);
     if(l.binary || l.xnor) swap_binary(&l);
 }
-
 #ifdef THREAD
 void forward_convolutional_layer_thread(netlayer * input){
      
-
     network net = input->net;
     layer l = input->layer;
 

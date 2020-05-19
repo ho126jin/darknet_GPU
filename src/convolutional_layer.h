@@ -15,7 +15,7 @@ void forward_convolutional_layer_thread(netlayer* input);
 #ifdef GPU
 void forward_convolutional_layer_gpu(convolutional_layer layer, network net);
 #ifdef THREAD
-void forward_convolutional_layer_gpu_thread(netlayer* input);
+void forward_convolutional_layer_gpu_thread(netlayer* input, int id);
 #endif
 void backward_convolutional_layer_gpu(convolutional_layer layer, network net);
 void update_convolutional_layer_gpu(convolutional_layer layer, update_args a);
