@@ -16,7 +16,6 @@ float cuda_compare(float *x_gpu, float *x, size_t n, char *s);
 dim3 cuda_gridsize(size_t n);
 
 #ifdef CUDNN
-cudnnHandle_t cudnn_handle_a(int idx);
 #ifdef THREAD
     #ifdef STREAM
         cudnnHandle_t cudnn_handle(int id, int line);
@@ -25,7 +24,8 @@ cudnnHandle_t cudnn_handle_a(int idx);
         cudnnHandle_t cudnn_handle(int id, int line);
     #endif
 #else
-    cudnnHandle_t cudnn_handle();
+cudnnHandle_t cudnn_handle();
+cudnnHandle_t cudnn_handle_a(int idx);
 #endif
 #endif
 

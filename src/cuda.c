@@ -155,8 +155,10 @@ dim3 cuda_gridsize(size_t n)
             return handle[i];
         }
         #endif
-    #else
+    #endif
+   // #else
     //cudnn = 0, tread = 0, stream= 0
+    #ifndef THREAD
     static int init_a[n_a] = {0};
     static cudnnHandle_t handle[n_a];
     cudnnHandle_t cudnn_handle_a(int idx)
@@ -177,7 +179,7 @@ dim3 cuda_gridsize(size_t n)
         }
         return handle[i];
     }
-    #endif
+    //#endif
 #endif
     static int init_blas[n_a] = {0};
     static cublasHandle_t handle_blas[n_a];
