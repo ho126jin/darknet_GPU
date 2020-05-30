@@ -136,7 +136,7 @@ dim3 cuda_gridsize(size_t n)
 
         void cuda_device_synchronize(int id, int line)
         {
-            cudaError_t status = cudaDeviceSynchronize(handle[id]);
+            cudaError_t status = cudaDeviceSynchronize();
             check_error_line(status, line);
         }
 
