@@ -211,7 +211,7 @@ extern "C" void forward_convolutional_layer_gpu_thread(netlayer* input, int id)
                     &one,
                     l.dstTensorDesc,
                     l.output_gpu);
-        //cudaDeviceSynchronize();
+        cudaDeviceSynchronize();
         //fprintf(stderr,"cudnnConvolutionForward End\n");
         #endif
     #else
