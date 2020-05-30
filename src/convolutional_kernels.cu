@@ -250,7 +250,7 @@ extern "C" void forward_convolutional_layer_gpu_thread(netlayer* input, int id)
 
     if (l.batch_normalize) {
 	//fprintf(stderr,"*********************batch normalize*****************************\n");
-        2020 0311 doyoung
+    //  2020 0311 doyoung
         #ifndef STREAM
             forward_batchnorm_layer_gpu(l, net);
         #else
