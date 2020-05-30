@@ -87,7 +87,7 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
 
 #ifdef CUDNN
     float one = 1;
-    /*#ifdef THREAD
+  #ifdef THREAD
   cudnnConvolutionForward(cudnn_handle(0,__LINE__),
                 &one,
                 l.srcTensorDesc,
@@ -102,8 +102,6 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
                 l.dstTensorDesc,
                 l.output_gpu);
     #else
-*/
-    #ifndef THREAD
     cudnnConvolutionForward(cudnn_handle_a(net.index_n),
                 &one,
                 l.srcTensorDesc,
@@ -116,7 +114,7 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
                 l.workspace_size,
                 &one,
                 l.dstTensorDesc,
-                l.output_gpu);
+                l.output_gpu); 
     #endif
 
 #else
@@ -251,12 +249,13 @@ extern "C" void forward_convolutional_layer_gpu_thread(netlayer* input, int id)
 #endif
 
     if (l.batch_normalize) {
+	//fprintf(stderr,"*********************batch normalize*****************************\n");
         //2020 0311 doyoung
-        #ifndef STREAM
+        //#ifndef STREAM
             forward_batchnorm_layer_gpu(l, net);
-        #else
-            forward_batchnorm_layer_gpu_stream(l, net, id);
-        #endif
+        //#else
+        //    forward_batchnorm_layer_gpu_stream(l, net, id);
+        //#endif
     } else {
         add_bias_gpu(l.output_gpu, l.biases_gpu, l.batch, l.n, l.out_w*l.out_h);
     }
