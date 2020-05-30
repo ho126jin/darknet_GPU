@@ -31,8 +31,8 @@ extern "C"
 
 #define n_loop 1
 
-#define n_des 1
-#define n_res 1
+#define n_des 2
+#define n_res 2
 #define n_vgg 1
 #define n_alex 1
 

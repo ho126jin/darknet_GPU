@@ -263,7 +263,7 @@ void forward_function(th_arg *input)
     {
         //fprintf(stderr, "GPU start\n");
         //cuda_push_array(nl->net.input_gpu, nl->net.input, ((nl->net).inputs)*((nl->net).batch));
-
+	
         if (nl->layer.delta_gpu)
         {
             fill_gpu(nl->layer.outputs * nl->layer.batch, 0, nl->layer.delta_gpu, 1);
@@ -301,15 +301,17 @@ void forward_network(network *netp)
         network net = *netp;
         int i;
         cuda_set_device(net.gpu_index);
+	
 	if (net.truth)
         {
             cuda_push_array(net.truth_gpu, net.truth, net.truths * net.batch);
         }
-
+	
         for (i = 0; i < net.n; ++i)
         {
         pthread_mutex_lock(&mutex_t[net.index_n]);
-	cuda_push_array(net.input_gpu, net.input, net.inputs * net.batch); 
+	cuda_push_array(net.input_gpu, net.input, net.inputs * net.batch);
+
         //fprintf(stderr, "[%d] index, [%s] start\n",net.index_n, get_layer_string(net.layers[i].type));
         cond_i[net.index_n] = 1;
         net.index = i;

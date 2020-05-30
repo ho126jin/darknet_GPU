@@ -463,7 +463,7 @@ int main()
     FILE *fp = fopen("serial.txt", "a");
 #endif
     fprintf(fp, "***** Des : %d , Res : %d , VGG : %d , Alex : %d *****\n", n_des, n_res, n_vgg, n_alex);
-    fprintf(fp, "***** ThREAD NUM POOL : %d *****\n", THREAD_NUM_POOL);
+    //fprintf(fp, "***** ThREAD NUM POOL : %d *****\n", THREAD_NUM_POOL);
     //test_resize("data/bad.jpg");
     //test_box();
     //test_convolutional_layer();
@@ -524,6 +524,19 @@ int main()
         pthread_mutex_init(&mutex_t[i], NULL);
         cond_i[i] = 0;
     }
+    if(fp){
+        fprintf(fp,"////////////////////////////////////////////////////////////THREAD ON : THPOOL %d\n",THREAD_NUM_POOL);
+    }else{
+        fprintf(stderr,"file open error");
+        exit(1);
+    }
+#else
+    if(fp){
+        fprintf(fp,"////////////////////////////////////////////////////////////THREAD OFF\n");
+    }else{
+        fprintf(stderr,"file open error");
+        exit(1);
+    } 
 #endif
 
 
