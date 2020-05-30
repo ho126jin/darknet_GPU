@@ -310,7 +310,7 @@ void forward_network(network *netp)
         for (i = 0; i < net.n; ++i)
         {
         pthread_mutex_lock(&mutex_t[net.index_n]);
-	cuda_push_array(net.input_gpu, net.input, net.inputs * net.batch);
+	    cuda_push_array(net.input_gpu, net.input, net.inputs * net.batch);
 
         //fprintf(stderr, "[%d] index, [%s] start\n",net.index_n, get_layer_string(net.layers[i].type));
         cond_i[net.index_n] = 1;
