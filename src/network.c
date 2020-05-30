@@ -567,6 +567,7 @@ void set_batch_network(network *net, int b)
     for (i = 0; i < net->n; ++i)
     {
         net->layers[i].batch = b;
+#ifdef GPU
 #ifdef CUDNN
         if (net->layers[i].type == CONVOLUTIONAL)
         {
@@ -578,6 +579,7 @@ void set_batch_network(network *net, int b)
             cudnnSetTensor4dDescriptor(l->dstTensorDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, l->out_c, l->out_h, l->out_w);
             cudnnSetTensor4dDescriptor(l->normTensorDesc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, l->out_c, 1, 1);
         }
+#endif
 #endif
     }
 }
