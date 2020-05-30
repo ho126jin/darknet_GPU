@@ -132,6 +132,14 @@ dim3 cuda_gridsize(size_t n)
         }
         #else
 
+        //2020 0530 hojin
+
+        void cuda_device_synchronize(int id, int line)
+        {
+            cudaError_t status = cudaDeviceSynchronize(handle[id]);
+            check_error_line(status, line);
+        }
+
         static int init_serial[THREAD_NUM_POOL] = {0};
         static cudnnHandle_t handle[THREAD_NUM_POOL];
 
@@ -152,6 +160,7 @@ dim3 cuda_gridsize(size_t n)
                 cudnnCreate(&handle[i]);
                 init_serial[i] = 1;
             }
+            
             return handle[i];
         }
         #endif
