@@ -312,7 +312,7 @@ void forward_network(network *netp)
         pthread_mutex_lock(&mutex_t[net.index_n]);
 	cuda_push_array(net.input_gpu, net.input, net.inputs * net.batch);
 
-        fprintf(stderr, "[%d] index, [%s] start\n",net.index_n, get_layer_string(net.layers[i].type));
+        //fprintf(stderr, "[%d] index, [%s] start\n",net.index_n, get_layer_string(net.layers[i].type));
         cond_i[net.index_n] = 1;
         net.index = i;
         layer l = net.layers[i];
@@ -350,7 +350,7 @@ void forward_network(network *netp)
             //net.truth_gpu = l.output_gpu;
         }
 
-        fprintf(stderr, "[%d] index [%s] end\n",net.index_n, get_layer_string(net.layers[i].type));
+        //fprintf(stderr, "[%d] index [%s] end\n",net.index_n, get_layer_string(net.layers[i].type));
         pthread_mutex_unlock(&mutex_t[net.index_n]);
     }
     //pthread_mutex_lock(&mutex_t[net.index_n]);
