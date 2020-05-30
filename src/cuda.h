@@ -19,7 +19,7 @@ dim3 cuda_gridsize(size_t n);
 #ifdef THREAD
     #ifdef STREAM
         cudnnHandle_t cudnn_handle(int id, int line);
-        void cuda_syncronize(int id, int line);
+        void cuda_synchronize(int id, int line);
     #else
         cudnnHandle_t cudnn_handle(int id, int line);
         void cuda_device_synchronize(int id, int line);

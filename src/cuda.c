@@ -125,7 +125,7 @@ dim3 cuda_gridsize(size_t n)
             return handle[i];
         }
 
-        void cuda_syncronize(int id, int line)
+        void cuda_synchronize(int id, int line)
         {
             cudaError_t status = cudaStreamSynchronize(stream[id]);
             check_error_line(status, line);
