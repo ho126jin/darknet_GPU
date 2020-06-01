@@ -266,7 +266,6 @@ extern "C" void forward_convolutional_layer_gpu_thread(netlayer* input, int id)
 
     // fprintf(fp, "convolution_kernel : %lf \n", what_time_is_it_now() - time);
     //fclose(fp);
-    fprintf(stderr,"***GPU FORWARD THREAD**\n"); 
 }
 #endif
 
