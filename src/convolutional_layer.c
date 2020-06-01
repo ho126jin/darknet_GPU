@@ -588,12 +588,7 @@ void forward_convolutional_layer_thread(netlayer * input){
     activate_array(l.output, l.outputs*l.batch, l.activation);
     if(l.binary || l.xnor) swap_binary(&l);
 
-    
-     // 
-     // 
-     
-     
-     
+    fprintf(stderr,"***CPU FORWARD THREAD**\n");    
 }
 #endif
 
