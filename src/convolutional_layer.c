@@ -86,6 +86,7 @@ image get_convolutional_delta(convolutional_layer l)
 static size_t get_workspace_size(layer l){
 #ifdef GPU
 #ifdef CUDNN
+#ifndef CPU
     if(gpu_index >= 0){
         size_t most = 0;
         size_t s = 0;
@@ -113,15 +114,11 @@ static size_t get_workspace_size(layer l){
                 l.bd_algo,
                 &s);
         if (s > most) most = s;
-        #ifdef CPU
-            return (size_t)l.out_h*l.out_w*l.size*l.size*l.c/l.groups*sizeof(float);
-        #else
             return most;
-        #endif
     }
-
 #else
-   return (size_t)l.out_h*l.out_w*l.size*l.size*l.c/l.groups*sizeof(float);
+    return (size_t)l.out_h*l.out_w*l.size*l.size*l.c/l.groups*sizeof(float);       
+#endif
 #endif
 #endif    
 }
