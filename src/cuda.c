@@ -88,7 +88,6 @@ dim3 cuda_gridsize(size_t n)
     //printf("%ld %ld %ld %ld\n", n, x, y, x*y*BLOCK);
     return d;
 }
-//int n_a = (int)n_des + (int)n_res + (int)n_vgg + (int)n_alex;
 
 #ifdef CUDNN
     #ifdef THREAD
@@ -157,7 +156,7 @@ dim3 cuda_gridsize(size_t n)
         }
         #endif
     #else
-    //cudnn = 0, tread = 0, stream= 0
+    //cudnn = 1, tread = 0, stream= 0
     static int init_a[n_a] = {0};
     static cudnnHandle_t handle[n_a];
     cudnnHandle_t cudnn_handle_a(int idx)

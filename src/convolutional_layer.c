@@ -119,6 +119,8 @@ static size_t get_workspace_size(layer l){
 #else
     return (size_t)l.out_h*l.out_w*l.size*l.size*l.c/l.groups*sizeof(float);       
 #endif
+#else
+    return (size_t)l.out_h*l.out_w*l.size*l.size*l.c/l.groups*sizeof(float);
 #endif
 #endif    
 }
