@@ -31,9 +31,9 @@ extern "C"
 
 #define n_loop 1
 
-#define n_des 0
-#define n_res 0
-#define n_vgg 0
+#define n_des 2
+#define n_res 2
+#define n_vgg 1
 #define n_alex 1
 
 #define n_a n_des+n_res+n_vgg+n_alex
@@ -373,6 +373,10 @@ extern "C"
         tree *softmax_tree;
 
         size_t workspace_size;
+        //2020-06-09 hojin 
+    #ifdef CUDNN
+        size_t workspace_size_cudnn;
+    #endif
 
 #ifdef GPU
         int *indexes_gpu;
