@@ -87,6 +87,7 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
 
 #ifdef CUDNN
     float one = 1;
+    l.workspace_size = l.workspace_size_cudnn;
   #ifdef THREAD
   cudnnConvolutionForward(cudnn_handle(0,__LINE__),
                 &one,
@@ -97,7 +98,7 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
                 l.convDesc,
                 l.fw_algo,
                 net.workspace,
-                l.workspace_size_cudnn,
+                l.workspace_size,
                 &one,
                 l.dstTensorDesc,
                 l.output_gpu);
@@ -177,6 +178,7 @@ extern "C" void forward_convolutional_layer_gpu_thread(netlayer* input, int id)
     if(id >= THREAD_NUM_POOL){
         id = THREAD_NUM_POOL-1;
     }
+    l.workspace_size = l.workspace_size_cudnn;
     //2020 0311 doyoung
     #ifdef THREAD 
         #ifdef STREAM
@@ -189,7 +191,7 @@ extern "C" void forward_convolutional_layer_gpu_thread(netlayer* input, int id)
         l.convDesc,
         l.fw_algo,
         net.workspace_gpu,
-        l.workspace_size_cudnn,
+        l.workspace_size,
         &one,
         l.dstTensorDesc,
         l.output_gpu);
@@ -205,7 +207,7 @@ extern "C" void forward_convolutional_layer_gpu_thread(netlayer* input, int id)
                     l.convDesc,
                     l.fw_algo,
                     net.workspace_gpu,
-                    l.workspace_size_cudnn,
+                    l.workspace_size,
                     &one,
                     l.dstTensorDesc,
                     l.output_gpu);
@@ -220,7 +222,7 @@ extern "C" void forward_convolutional_layer_gpu_thread(netlayer* input, int id)
                     l.convDesc,
                     l.fw_algo,
                     net.workspace_gpu,
-                    l.workspace_size_cudnn,
+                    l.workspace_size,
                     &one,
                     l.dstTensorDesc,
                     l.output_gpu);
