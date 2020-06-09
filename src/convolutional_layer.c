@@ -155,6 +155,7 @@ static size_t get_cudnn_workspace_size(layer l){
                 &s);
         if (s > most) most = s;
             return most;
+    }
 }
 #endif
 
@@ -418,7 +419,7 @@ convolutional_layer make_convolutional_layer(int batch, int h, int w, int c, int
     }
 #endif
     l.workspace_size = get_workspace_size(l);
-    
+
 #ifdef CUDNN
     l.workspace_size_cudnn = get_cudnn_workspace_size(l);
 #endif
