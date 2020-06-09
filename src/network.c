@@ -263,7 +263,7 @@ void forward_function(th_arg *input)
     {
         //fprintf(stderr, "GPU start\n");
         //cuda_push_array(nl->net.input_gpu, nl->net.input, ((nl->net).inputs)*((nl->net).batch));
-	
+        fprintf(stderr, "GPU - [%d] index, [%s] start\n",nl->net.index_n, get_layer_string(nl->net.layers[i].type));
         if (nl->layer.delta_gpu)
         {
             fill_gpu(nl->layer.outputs * nl->layer.batch, 0, nl->layer.delta_gpu, 1);
@@ -277,6 +277,7 @@ void forward_function(th_arg *input)
     else if (input->flag == 0)
     {
 #endif
+        fprintf(stderr, "CPU - [%d] index, [%s] start\n",nl->net.index_n, get_layer_string(nl->net.layers[i].type));
         if (nl->layer.delta)
         {
             fill_cpu(nl->layer.outputs * nl->layer.batch, 0, nl->layer.delta, 1);
