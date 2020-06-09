@@ -82,7 +82,7 @@ image get_convolutional_delta(convolutional_layer l)
 {
     return float_to_image(l.out_w,l.out_h,l.out_c,l.delta);
 }
-
+/*
 static size_t get_workspace_size(layer l){
 #ifdef GPU
 #ifdef CUDNN
@@ -123,8 +123,15 @@ static size_t get_workspace_size(layer l){
     return (size_t)l.out_h*l.out_w*l.size*l.size*l.c/l.groups*sizeof(float);
 #endif
 #endif    
-}
+}*/
+
+
 //2020-06-09 hojin cudnnn workspace
+static size_t get_workspace_size(layer l){
+
+    return (size_t)l.out_h*l.out_w*l.size*l.size*l.c/l.groups*sizeof(float);           
+}
+
 #ifdef CUDNN
 static size_t get_cudnn_workspace_size(layer l){
     if(gpu_index >= 0){
