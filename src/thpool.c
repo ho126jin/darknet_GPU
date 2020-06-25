@@ -99,6 +99,12 @@ static void bsem_post(struct bsem *bsem_p);
 static void bsem_post_all(struct bsem *bsem_p);
 static void bsem_wait(struct bsem *bsem_p);
 
+#define NR_GPU
+#ifdef NR_GPU // kmsjames 20-06-20
+static unsigned char NRofGPU = 4;
+#endif
+
+
 /* ========================== THREADPOOL ============================ */
 
 /* Initialise thread pool */
@@ -149,12 +155,13 @@ struct thpool_ *thpool_init(int num_threads)
 	int n;
 	cpu_set_t cpuset;
 
+	//kmsjames 2020-06-20 applied NRofGPU 
 	for (n = 0; n < num_threads; n++)
 	{
 		thread_init(thpool_p, &thpool_p->threads[n], n);
 
 		#ifdef CPU
-		if(n == (num_threads-1)){
+		if(n > ((num_threads - NRofGPU)-1)){
 		#endif
 			thpool_p->threads[n]->flag = 1;
 		#ifdef CPU
@@ -370,14 +377,14 @@ static void *thread_do(struct thread *thread_p)
 	{
 
 #if 1
-		// doyoung
-		if (thread_p->id == 0 && thpool_p->jobqueue.len == 0)
+		// kmsjames 2020-06-20 applying NRofGPU
+		if (thread_p->id < NRofGPU && thpool_p->jobqueue.len == 0)
 		{
 			continue;
 		}
 		if (thpool_p->jobqueue.front != NULL)
 		{
-			if (thread_p->id == 0 && ((th_arg *)thpool_p->jobqueue.front->arg)->type == 0)
+			if (thread_p->id < NRofGPU && ((th_arg *)thpool_p->jobqueue.front->arg)->type == CONVOLUTIONAL)
 			{
 				//fprintf(stderr, " [%d - %d]  id = 0 && conv \n", ((th_arg*)thpool_p->jobqueue.front->arg)->id, ((th_arg*)thpool_p->jobqueue.front->arg)->n);
 				continue;
