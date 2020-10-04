@@ -72,6 +72,7 @@ void binarize_weights_gpu(float *weights, int n, int size, float *binary)
 
 void forward_convolutional_layer_gpu(convolutional_layer l, network net)
 {
+	fprintf(stderr , "%d - start\n", net.index_n);
     fill_gpu(l.outputs*l.batch, 0, l.output_gpu, 1);
     if(l.binary){
         binarize_weights_gpu(l.weights_gpu, l.n, l.c/l.groups*l.size*l.size, l.binary_weights_gpu);
@@ -87,8 +88,7 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
 
 #ifdef CUDNN
     float one = 1;
-  #ifdef THREAD
-  cudnnConvolutionForward(cudnn_handle(0,__LINE__),
+    cudnnConvolutionForward(cudnn_handle(),
                 &one,
                 l.srcTensorDesc,
                 net.input_gpu,
@@ -97,25 +97,10 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
                 l.convDesc,
                 l.fw_algo,
                 net.workspace,
-                l.workspace_size_cudnn,
+                l.workspace_size,
                 &one,
                 l.dstTensorDesc,
                 l.output_gpu);
-    #else
-    cudnnConvolutionForward(cudnn_handle_a(net.index_n),
-                &one,
-                l.srcTensorDesc,
-                net.input_gpu,
-                l.weightDesc,
-                l.weights_gpu,
-                l.convDesc,
-                l.fw_algo,
-                net.workspace,
-                l.workspace_size_cudnn,
-                &one,
-                l.dstTensorDesc,
-                l.output_gpu); 
-    #endif
 
 #else
     int i, j;
@@ -134,13 +119,14 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
             } else {
                 im2col_gpu(im, l.c/l.groups, l.h, l.w, l.size, l.stride, l.pad, b);
             }
-            gemm_gpu_dd(0,0,m,n,k,1,a,k,b,n,1,c,n,net.index_n);
+            gemm_gpu(0,0,m,n,k,1,a,k,b,n,1,c,n);
         }
     }
 #endif
 
+     fprintf(stderr , "%d - end\n", net.index_n);
     if (l.batch_normalize) {
-            forward_batchnorm_layer_gpu(l, net);
+        forward_batchnorm_layer_gpu(l, net);
     } else {
         add_bias_gpu(l.output_gpu, l.biases_gpu, l.batch, l.n, l.out_w*l.out_h);
     }
@@ -150,81 +136,74 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
     if(l.binary || l.xnor) swap_binary(&l);
 }
 
+
+#ifdef STREAM
+    void binarize_gpu_stream(float *x, int n, float *binary, int id)
+    {
+        binarize_kernel<<<cuda_gridsize(n), BLOCK, 0, usedstream(id)>>>(x, n, binary);
+        check_error(cudaPeekAtLastError());
+    }   
+    void binarize_weights_gpu_stream(float *weights, int n, int size, float *binary, int id)
+    {
+        binarize_weights_kernel<<<cuda_gridsize(n), BLOCK, 0, usedstream(id)>>>(weights, n, size, binary);
+        check_error(cudaPeekAtLastError());
+    }
+#endif
+
+
 #ifdef THREAD
-extern "C" void forward_convolutional_layer_gpu_thread(netlayer* input, int id)
+void forward_convolutional_layer_gpu_thread(netlayer* input)
 {
-    //FILE * fp = fopen("result.txt", "a");
-    
-    //double time = what_time_is_it_now();
+     
+
     network net = input->net;
     layer l = input->layer;
-    
-    fill_gpu(l.outputs*l.batch, 0, l.output_gpu, 1);
+ 
+    #ifdef STREAM
+        //stream apply connected
+        fill_gpu_stream(l.outputs*l.batch, 0, l.output_gpu, 1,net.index_n);
+    #else
+        fill_gpu(l.outputs*l.batch, 0, l.output_gpu, 1);
+    #endif
     if(l.binary){
-        binarize_weights_gpu(l.weights_gpu, l.n, l.c/l.groups*l.size*l.size, l.binary_weights_gpu);
+        #ifdef STREAM
+            binarize_weights_gpu_stream(l.weights_gpu, l.n, l.c/l.groups*l.size*l.size, l.binary_weights_gpu, net.index_n);
+        #else
+            binarize_weights_gpu(l.weights_gpu, l.n, l.c/l.groups*l.size*l.size, l.binary_weights_gpu);
+        #endif
         swap_binary(&l);
     }
 
     if(l.xnor){
-        binarize_weights_gpu(l.weights_gpu, l.n, l.c/l.groups*l.size*l.size, l.binary_weights_gpu);
+        #ifdef STREAM
+            binarize_weights_gpu_stream(l.weights_gpu, l.n, l.c/l.groups*l.size*l.size, l.binary_weights_gpu, net.index_n);
+        #else
+            binarize_weights_gpu(l.weights_gpu, l.n, l.c/l.groups*l.size*l.size, l.binary_weights_gpu);
+        #endif
         swap_binary(&l);
-        binarize_gpu(net.input_gpu, l.c*l.h*l.w*l.batch, l.binary_input_gpu);
+        #ifdef STREAM
+            binarize_gpu_stream(net.input_gpu, l.c*l.h*l.w*l.batch, l.binary_input_gpu, net.index_n);
+        #else
+            binarize_gpu(net.input_gpu, l.c*l.h*l.w*l.batch, l.binary_input_gpu);
+        #endif
         net.input_gpu = l.binary_input_gpu;
     }
 
 #ifdef CUDNN
     float one = 1;
-    if(id >= THREAD_NUM_POOL){
-        id = THREAD_NUM_POOL-1;
-    }
-    //2020 0311 doyoung
-    #ifdef THREAD 
-        #ifdef STREAM
-        cudnnConvolutionForward(cudnn_handle(id, __LINE__),
-        &one,
-        l.srcTensorDesc,
-        net.input_gpu,
-        l.weightDesc,
-        l.weights_gpu,
-        l.convDesc,
-        l.fw_algo,
-        net.workspace_gpu,
-        l.workspace_size_cudnn,
-        &one,
-        l.dstTensorDesc,
-        l.output_gpu);
-
-        cuda_synchronize(id, __LINE__);
-        #else
-        cudnnConvolutionForward(cudnn_handle(net.index_n,__LINE__),
-                    &one,
-                    l.srcTensorDesc,
-                    net.input_gpu,
-                    l.weightDesc,
-                    l.weights_gpu,
-                    l.convDesc,
-                    l.fw_algo,
-                    net.workspace_gpu,
-                    l.workspace_size_cudnn,
-                    &one,
-                    l.dstTensorDesc,
-                    l.output_gpu);
-        #endif
-    #else
-	cudnnConvolutionForward(cudnn_handle(),
-                    &one,
-                    l.srcTensorDesc,
-                    net.input_gpu,
-                    l.weightDesc,
-                    l.weights_gpu,
-                    l.convDesc,
-                    l.fw_algo,
-                    net.workspace_gpu,
-                    l.workspace_size_cudnn,
-                    &one,
-                    l.dstTensorDesc,
-                    l.output_gpu);
-	#endif
+    cudnnConvolutionForward(cudnn_handle(),
+                &one,
+                l.srcTensorDesc,
+                net.input_gpu,
+                l.weightDesc,
+                l.weights_gpu,
+                l.convDesc,
+                l.fw_algo,
+                net.workspace_gpu,
+                l.workspace_size,
+                &one,
+                l.dstTensorDesc,
+                l.output_gpu);
 
 #else
     int i, j;
@@ -241,31 +220,37 @@ extern "C" void forward_convolutional_layer_gpu_thread(netlayer* input, int id)
             if (l.size == 1){
                 b = im;
             } else {
+            #ifdef STREAM
+                im2col_gpu_stream(im, l.c/l.groups, l.h, l.w, l.size, l.stride, l.pad, b, net.index_n);
+            #else
                 im2col_gpu(im, l.c/l.groups, l.h, l.w, l.size, l.stride, l.pad, b);
+            #endif
             }
-            gemm_gpu_dd(0,0,m,n,k,1,a,k,b,n,1,c,n,net.index_n);
+            gemm_gpu_dd(0,0,m,n,k,1,a,k,b,n,1,c,n, input->net.index_n);
+            //cuda_synchronize(net.index_n, __LINE__);
+
         }
     }
 #endif
 
     if (l.batch_normalize) {
-	//fprintf(stderr,"*********************batch normalize*****************************\n");
-    //2020 0311 doyoung
-        #ifndef STREAM
-            forward_batchnorm_layer_gpu(l, net);
-        #else
-            forward_batchnorm_layer_gpu_stream(l, net, id);
-        #endif
+        forward_batchnorm_layer_gpu(l, net);
     } else {
-        add_bias_gpu(l.output_gpu, l.biases_gpu, l.batch, l.n, l.out_w*l.out_h);
+        #ifdef STREAM
+            add_bias_gpu_stream(l.output_gpu, l.biases_gpu, l.batch, l.n, l.out_w*l.out_h, net.index_n);
+        #else
+            add_bias_gpu(l.output_gpu, l.biases_gpu, l.batch, l.n, l.out_w*l.out_h);
+        #endif
     }
 
-    activate_array_gpu(l.output_gpu, l.outputs*l.batch, l.activation);
+    #ifdef STREAM
+        //stream apply activate
+        activate_array_gpu_stream(l.output_gpu, l.outputs*l.batch, l.activation, net.index_n);
+    #else
+        activate_array_gpu(l.output_gpu, l.outputs*l.batch, l.activation);
+    #endif
     //if(l.dot > 0) dot_error_gpu(l);
     if(l.binary || l.xnor) swap_binary(&l);
-
-    // fprintf(fp, "convolution_kernel : %lf \n", what_time_is_it_now() - time);
-    //fclose(fp);
 }
 #endif
 
@@ -330,21 +315,6 @@ void backward_convolutional_layer_gpu(convolutional_layer l, network net)
     if(l.xnor) net.input_gpu = l.binary_input_gpu;
 #ifdef CUDNN
     float one = 1;
-    #ifdef THREAD
-    cudnnConvolutionBackwardFilter(cudnn_handle(0, __LINE__),
-            &one,
-            l.srcTensorDesc,
-            net.input_gpu,
-            l.ddstTensorDesc,
-            l.delta_gpu,
-            l.convDesc,
-            l.bf_algo,
-            net.workspace,
-            l.workspace_size,
-            &one,
-            l.dweightDesc,
-            l.weight_updates_gpu);
-    #else
     cudnnConvolutionBackwardFilter(cudnn_handle(),
             &one,
             l.srcTensorDesc,
@@ -358,25 +328,9 @@ void backward_convolutional_layer_gpu(convolutional_layer l, network net)
             &one,
             l.dweightDesc,
             l.weight_updates_gpu);
-    #endif
 
     if(net.delta_gpu){
         if(l.binary || l.xnor) swap_binary(&l);
-        #ifdef THREAD
-        cudnnConvolutionBackwardData(cudnn_handle(0, __LINE__),
-                &one,
-                l.weightDesc,
-                l.weights_gpu,
-                l.ddstTensorDesc,
-                l.delta_gpu,
-                l.convDesc,
-                l.bd_algo,
-                net.workspace,
-                l.workspace_size,
-                &one,
-                l.dsrcTensorDesc,
-                net.delta_gpu);
-        #else
         cudnnConvolutionBackwardData(cudnn_handle(),
                 &one,
                 l.weightDesc,
@@ -390,7 +344,6 @@ void backward_convolutional_layer_gpu(convolutional_layer l, network net)
                 &one,
                 l.dsrcTensorDesc,
                 net.delta_gpu);
-        #endif
         if(l.binary || l.xnor) swap_binary(&l);
         if(l.xnor) gradient_array_gpu(original_input, l.batch*l.c*l.h*l.w, HARDTAN, net.delta_gpu);
     }
@@ -493,6 +446,7 @@ void update_convolutional_layer_gpu(layer l, update_args a)
         constrain_gpu(l.nweights, l.clip, l.weights_gpu, 1);
     }
 }
+
 
 
 

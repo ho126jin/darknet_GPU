@@ -6,16 +6,17 @@
 #include "activations.h"
 #include "layer.h"
 #include "network.h"
+#include "time_checker.h"
 
 typedef layer convolutional_layer;
 #ifdef THREAD
-void forward_convolutional_layer_thread(netlayer* input);
+void forward_convolutional_layer_thread(netlayer *input);
 #endif
 
 #ifdef GPU
 void forward_convolutional_layer_gpu(convolutional_layer layer, network net);
 #ifdef THREAD
-void forward_convolutional_layer_gpu_thread(netlayer* input, int id);
+void forward_convolutional_layer_gpu_thread(netlayer *input);
 #endif
 void backward_convolutional_layer_gpu(convolutional_layer layer, network net);
 void update_convolutional_layer_gpu(convolutional_layer layer, update_args a);
@@ -51,6 +52,7 @@ image get_convolutional_weight(convolutional_layer layer, int i);
 
 int convolutional_out_height(convolutional_layer layer);
 int convolutional_out_width(convolutional_layer layer);
-
+#ifdef STREAM
+    void add_bias_gpu_stream(float *output, float *biases, int batch, int n, int size, int id);
 #endif
-
+#endif
