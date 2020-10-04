@@ -5,7 +5,7 @@
 #include <string.h>
 #include <pthread.h>
 #include "thpool.h"
-
+#include "thpool_ex.h"
 #ifdef GPU
 #define BLOCK 512
 
@@ -25,25 +25,16 @@ extern "C"
 
 #define SECRET_NUM -1234
     extern int gpu_index;
-    extern threadpool thpool;
-
-#define THREAD_NUM_POOL 8
-
-#define n_loop 1
-
-#define n_des 2
-#define n_res 2
-#define n_vgg 1
-#define n_alex 1
-
-#define n_a n_des+n_res+n_vgg+n_alex
-
+    extern twin_thpool *twin_thp;
+#define THREAD_NUM_POOL 8 // no use
+#define n_loop 16 //hojin # of loop classifier2 no use
 #ifdef THREAD
     extern pthread_cond_t *cond_t;
     extern pthread_mutex_t *mutex_t;
     extern int *cond_i;
 #endif
-
+extern FILE* timing;
+extern double gpu_total_time;
     /*��Ÿ������*/
     typedef struct
     {
@@ -109,6 +100,41 @@ extern "C"
         DIV
     } BINARY_ACTIVATION;
 
+    //���̾� Ÿ��
+    typedef enum
+    {
+        CONVOLUTIONAL,
+        DECONVOLUTIONAL,
+        CONNECTED,
+        MAXPOOL,
+        SOFTMAX,
+        DETECTION,
+        DROPOUT,
+        CROP,
+        ROUTE,
+        COST,
+        NORMALIZATION,
+        AVGPOOL,
+        LOCAL,
+        SHORTCUT,
+        ACTIVE,
+        RNN,
+        GRU,
+        LSTM,
+        CRNN,
+        BATCHNORM,
+        NETWORK,
+        XNOR,
+        REGION,
+        YOLO,
+        ISEG,
+        REORG,
+        UPSAMPLE,
+        LOGXENT,
+        L2NORM,
+        BLANK
+    } LAYER_TYPE;
+
     //cost function
 
     typedef enum
@@ -153,12 +179,7 @@ extern "C"
 #ifdef THREAD
         void (*forward_thread)(netlayer *);
         //2020 0223 hojin gpu threadbody function add
-        //2020 0316 doyoung arguments add
-#ifdef STREAM        
-	void (*forward_gpu_thread)(netlayer *, int id);
-#else        
-	void (*forward_gpu_thread)(netlayer *);
-#endif
+        void (*forward_gpu_thread)(netlayer *);
 #endif
         void (*backward)(struct layer, struct network);
         void (*update)(struct layer, update_args);
@@ -373,12 +394,9 @@ extern "C"
         tree *softmax_tree;
 
         size_t workspace_size;
-        //2020-06-09 hojin 
-    #ifdef CUDNN
-        size_t workspace_size_cudnn;
-    #endif
-
+        double exe_time;
 #ifdef GPU
+        double exe_time_gpu;
         int *indexes_gpu;
 
         float *z_gpu;
@@ -454,6 +472,8 @@ extern "C"
         float *rand_gpu;
         float *squared_gpu;
         float *norms_gpu;
+        //lcs 0815
+        double gpu_util_weight;
 #ifdef CUDNN
         cudnnTensorDescriptor_t srcTensorDesc, dstTensorDesc;
         cudnnTensorDescriptor_t dsrcTensorDesc, ddstTensorDesc;
@@ -716,31 +736,11 @@ extern "C"
 
     void cuda_set_device(int n);
     void cuda_free(float *x_gpu);
-
-    //2020 0317 doyoung
-    void cuda_freehost(float *x_gpu);
-
     float *cuda_make_array(float *x, size_t n);
-
-    //2020 0311 doyoung  cudaMallocHost use
-    void cuda_malloc_int_host(int *x_host, size_t size, int line);
-    void cuda_malloc_float_host(float **x_host, size_t size, int line);
-
+    float *cuda_make_array_2(float *x, size_t n);
     void cuda_pull_array(float *x_gpu, float *x, size_t n);
-#ifdef STREAM
-    void cuda_pull_array_stream(float *x_gpu, float *x, size_t n, int id, int line);
-#endif
     float cuda_mag_array(float *x_gpu, size_t n);
     void cuda_push_array(float *x_gpu, float *x, size_t n);
-#ifdef CUDNN
-    #ifdef THREAD 
-    #ifdef STREAM
-        void cudnn_handle_set_stream();
-    #else
-        void cudnn_handle_set();
-    #endif
-    #endif
-#endif
 
     void forward_network_gpu(network *net);
     void backward_network_gpu(network *net);
@@ -905,6 +905,11 @@ extern "C"
     float rand_normal();
     float rand_uniform(float min, float max);
     network *copy_network(network *);
+#ifdef STREAM
+    void cudnn_handle_set_stream(int num);
+    void add_bias_gpu_stream(float *output, float *biases, int batch, int n, int size, int id);
+    void fill_gpu_stream(int N, float ALPHA, float *X, int INCX, int id);
+#endif
 
     typedef struct _test
     {
