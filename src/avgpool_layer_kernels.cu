@@ -60,7 +60,15 @@ extern "C" void forward_avgpool_layer_gpu_thread(netlayer* input)
 
     size_t n = layer.c*layer.batch;
 
-    forward_avgpool_layer_kernel<<<cuda_gridsize(n), BLOCK>>>(n, layer.w, layer.h, layer.c, net.input_gpu, layer.output_gpu);
+    #ifdef STREAM
+        //stream apply avgpool
+        //fprintf(stderr, "[%d] index, avgpool id parameter : [%d] \n", net.index_n,  id);
+        forward_avgpool_layer_kernel<<<cuda_gridsize(n), BLOCK, 0, usedstream(net.index_n)>>>(n, layer.w, layer.h, layer.c, net.input_gpu, layer.output_gpu);
+        //cuda_synchronize(net.index_n, __LINE__);
+
+    #else
+        forward_avgpool_layer_kernel<<<cuda_gridsize(n), BLOCK>>>(n, layer.w, layer.h, layer.c, net.input_gpu, layer.output_gpu);
+    #endif
     check_error(cudaPeekAtLastError());
 
      

@@ -5,6 +5,7 @@
 #include "cuda.h"
 #include "layer.h"
 #include "network.h"
+#include "time_checker.h"
 
 typedef layer avgpool_layer;
 
@@ -15,16 +16,15 @@ void forward_avgpool_layer(const avgpool_layer l, network net);
 void backward_avgpool_layer(const avgpool_layer l, network net);
 
 #ifdef THREAD
-void forward_avgpool_layer_thread(netlayer* input);
+void forward_avgpool_layer_thread(netlayer *input);
 #endif
 
 #ifdef GPU
 void forward_avgpool_layer_gpu(avgpool_layer l, network net);
 #ifdef THREAD
-void forward_avgpool_layer_gpu_thread(netlayer* input);
+void forward_avgpool_layer_gpu_thread(netlayer *input);
 #endif
 void backward_avgpool_layer_gpu(avgpool_layer l, network net);
 #endif
 
 #endif
-

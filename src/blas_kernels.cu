@@ -73,6 +73,16 @@ void add_bias_gpu(float *output, float *biases, int batch, int n, int size)
     add_bias_kernel<<<cuda_gridsize(num), BLOCK>>>(output, biases, batch, n, size);
     check_error(cudaPeekAtLastError());
 }
+#ifdef STREAM
+    void add_bias_gpu_stream(float *output, float *biases, int batch, int n, int size, int id)
+    {
+        int num = n*size*batch;
+        add_bias_kernel<<<cuda_gridsize(num), BLOCK, 0, usedstream(id)>>>(output, biases, batch, n, size);
+        //cuda_synchronize(id, __LINE__);
+
+        check_error(cudaPeekAtLastError());
+    }
+#endif
 
 __global__ void backward_bias_conn_kernel(float *bias_updates, float *delta, int batch, int n)
 {
@@ -604,6 +614,8 @@ extern "C" void copy_gpu(int N, float * X, int INCX, float * Y, int INCY)
     copy_gpu_offset(N, X, 0, INCX, Y, 0, INCY);
 }
 
+
+
 extern "C" void mul_gpu(int N, float * X, int INCX, float * Y, int INCY)
 {
     mul_kernel<<<cuda_gridsize(N), BLOCK>>>(N, X, INCX, Y, INCY);
@@ -1033,3 +1045,95 @@ extern "C" void upsample_gpu(float *in, int w, int h, int c, int batch, int stri
     upsample_kernel<<<cuda_gridsize(size), BLOCK>>>(size, in, w, h, c, batch, stride, forward, scale, out);
     check_error(cudaPeekAtLastError());
 }
+
+
+#ifdef STREAM
+    extern "C" void copy_gpu_stream(int N, float * X, int INCX, float * Y, int INCY, int id)
+    {
+        copy_gpu_offset_stream(N, X, 0, INCX, Y, 0, INCY, id);
+    } 
+
+    extern "C" void copy_gpu_offset_stream(int N, float * X, int OFFX, int INCX, float * Y, int OFFY, int INCY, int id)
+    {
+        copy_kernel<<<cuda_gridsize(N), BLOCK, 0 , usedstream(id)>>>(N, X, OFFX, INCX, Y, OFFY, INCY);
+        //cuda_synchronize(id, __LINE__);
+
+        check_error(cudaPeekAtLastError());
+    }
+    extern "C" void fill_gpu_stream(int N, float ALPHA, float * X, int INCX, int id)
+    {
+        fill_kernel<<<cuda_gridsize(N), BLOCK, 0, usedstream(id)>>>(N, ALPHA, X, INCX);
+        //cuda_synchronize(id, __LINE__);
+   	    check_error(cudaPeekAtLastError());
+    }
+    extern "C" void shortcut_gpu_stream(int batch, int w1, int h1, int c1, float *add, int w2, int h2, int c2, float s1, float s2, float *out, int id)
+    {
+        int minw = (w1 < w2) ? w1 : w2;
+        int minh = (h1 < h2) ? h1 : h2;
+        int minc = (c1 < c2) ? c1 : c2;
+
+        int stride = w1/w2;
+        int sample = w2/w1;
+        assert(stride == h1/h2);
+        assert(sample == h2/h1);
+        if(stride < 1) stride = 1;
+        if(sample < 1) sample = 1;
+
+        int size = batch * minw * minh * minc;
+        shortcut_kernel<<<cuda_gridsize(size), BLOCK, 0, usedstream(id)>>>(size, minw, minh, minc, stride, sample, batch, w1, h1, c1, add, w2, h2, c2, s1, s2, out);
+        //cuda_synchronize(id, __LINE__);
+
+        check_error(cudaPeekAtLastError());
+    }
+    extern "C" void softmax_tree_stream(float *input, int spatial, int batch, int stride, float temp, float *output, tree hier, int id)
+    {
+        int *tree_groups_size = cuda_make_int_array(hier.group_size, hier.groups);
+        int *tree_groups_offset = cuda_make_int_array(hier.group_offset, hier.groups);
+        int num = spatial*batch*hier.groups;
+        softmax_tree_kernel<<<cuda_gridsize(num), BLOCK, 0, usedstream(id)>>>(input, spatial, batch, stride, temp, output, hier.groups, tree_groups_size, tree_groups_offset);
+        //cuda_synchronize(id, __LINE__);
+        check_error(cudaPeekAtLastError());
+        cuda_free((float *)tree_groups_size);
+        cuda_free((float *)tree_groups_offset);
+    }
+
+    extern "C" void softmax_gpu_stream(float *input, int n, int batch, int batch_offset, int groups, int group_offset, int stride, float temp, float *output, int id)
+    {
+        softmax_kernel<<<cuda_gridsize(batch*groups), BLOCK, 0, usedstream(id)>>>(input, n, batch, batch_offset, groups, group_offset, stride, temp, output);
+        //cuda_synchronize(id, __LINE__);
+
+        check_error(cudaPeekAtLastError());
+    }
+
+    extern "C" void softmax_x_ent_gpu_stream(int n, float *pred, float *truth, float *delta, float *error, int id)
+    {
+        softmax_x_ent_kernel<<<cuda_gridsize(n), BLOCK, 0, usedstream(id)>>>(n, pred, truth, delta, error);
+        //cuda_synchronize(id, __LINE__);
+
+        check_error(cudaPeekAtLastError());
+    }
+
+    extern "C" void mask_gpu_stream(int N, float * X, float mask_num, float * mask, float val, int id)
+    {
+        mask_kernel<<<cuda_gridsize(N), BLOCK, 0, usedstream(id)>>>(N, X, mask_num, mask, val);
+        //cuda_synchronize(id, __LINE__);
+
+        check_error(cudaPeekAtLastError());
+    }
+    void scale_bias_gpu_stream(float *output, float *biases, int batch, int n, int size, int id)
+    {
+        dim3 dimGrid((size-1)/BLOCK + 1, n, batch);
+        dim3 dimBlock(BLOCK, 1, 1);
+
+        scale_bias_kernel<<<dimGrid, dimBlock, 0, usedstream(id)>>>(output, biases, n, size);
+        //cuda_synchronize(id, __LINE__);
+        check_error(cudaPeekAtLastError());
+    }
+    extern "C" void normalize_gpu_stream(float *x, float *mean, float *variance, int batch, int filters, int spatial, int id)
+    {
+        size_t N = batch*filters*spatial;
+        normalize_kernel<<<cuda_gridsize(N), BLOCK, 0, usedstream(id)>>>(N, x, mean, variance, batch, filters, spatial);
+       //cuda_synchronize(id, __LINE__);
+        check_error(cudaPeekAtLastError());
+    }
+#endif
