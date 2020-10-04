@@ -2,6 +2,7 @@
 #define ROUTE_LAYER_H
 #include "network.h"
 #include "layer.h"
+#include "time_checker.h"
 
 typedef layer route_layer;
 
@@ -11,13 +12,13 @@ void backward_route_layer(const route_layer l, network net);
 void resize_route_layer(route_layer *l, network *net);
 
 #ifdef THREAD
-void forward_route_layer_thread(netlayer* input);
+void forward_route_layer_thread(netlayer *input);
 #endif
 
 #ifdef GPU
 void forward_route_layer_gpu(const route_layer l, network net);
 #ifdef THREAD
-void forward_route_layer_gpu_thread(netlayer* input);
+void forward_route_layer_gpu_thread(netlayer *input);
 #endif
 void backward_route_layer_gpu(const route_layer l, network net);
 #endif
