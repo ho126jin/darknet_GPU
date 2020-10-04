@@ -59,3 +59,19 @@ void im2col_gpu(float *im,
                 stride, height_col,
                 width_col, data_col);
 }
+#ifdef STREAM
+void im2col_gpu_stream(float *im,
+    int channels, int height, int width,
+    int ksize, int stride, int pad, float *data_col, int id){
+    // We are going to launch channels * height_col * width_col kernels, each
+    // kernel responsible for copying a single-channel grid.
+    int height_col = (height + 2 * pad - ksize) / stride + 1;
+    int width_col = (width + 2 * pad - ksize) / stride + 1;
+    int num_kernels = channels * height_col * width_col;
+    im2col_gpu_kernel<<<(num_kernels+BLOCK-1)/BLOCK,
+    BLOCK,0,usedstream(id)>>>(
+            num_kernels, im, height, width, ksize, pad,
+            stride, height_col,
+            width_col, data_col);
+    }
+#endif
