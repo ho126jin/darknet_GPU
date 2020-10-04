@@ -831,6 +831,7 @@ network *parse_network_cfg(char *filename)
             l.output = net->layers[count-1].output;
             l.delta = net->layers[count-1].delta;
 #ifdef GPU
+
             l.output_gpu = net->layers[count-1].output_gpu;
             l.delta_gpu = net->layers[count-1].delta_gpu;
 #endif
@@ -850,9 +851,6 @@ network *parse_network_cfg(char *filename)
         option_unused(options);
         net->layers[count] = l;
         if (l.workspace_size > workspace_size) workspace_size = l.workspace_size;
-        #ifdef CUDNN
-        if (l.workspace_size_cudnn > workspace_size) workspace_size = l.workspace_size_cudnn;
-        #endif
         free_section(s);
         n = n->next;
         ++count;
@@ -882,7 +880,6 @@ network *parse_network_cfg(char *filename)
 
 #ifdef GPU
 #ifdef THREAD
-
     net->workspace_gpu = cuda_make_array(0, (workspace_size-1)/sizeof(float)+1);
     net->workspace = calloc(1, workspace_size);
 #else

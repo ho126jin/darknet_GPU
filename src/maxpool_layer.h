@@ -5,6 +5,7 @@
 #include "cuda.h"
 #include "layer.h"
 #include "network.h"
+#include "time_checker.h"
 
 typedef layer maxpool_layer;
 
@@ -15,16 +16,15 @@ void forward_maxpool_layer(const maxpool_layer l, network net);
 void backward_maxpool_layer(const maxpool_layer l, network net);
 
 #ifdef THREAD
-void forward_maxpool_layer_thread(netlayer* input);
+void forward_maxpool_layer_thread(netlayer *input);
 #endif
 
 #ifdef GPU
 void forward_maxpool_layer_gpu(maxpool_layer l, network net);
 #ifdef THREAD
-void forward_maxpool_layer_gpu_thread(netlayer* input);
+void forward_maxpool_layer_gpu_thread(netlayer *input);
 #endif
 void backward_maxpool_layer_gpu(maxpool_layer l, network net);
 #endif
 
 #endif
-

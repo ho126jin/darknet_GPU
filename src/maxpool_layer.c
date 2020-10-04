@@ -7,7 +7,7 @@ image get_maxpool_image(maxpool_layer l)
     int h = l.out_h;
     int w = l.out_w;
     int c = l.c;
-    return float_to_image(w,h,c,l.output);
+    return float_to_image(w, h, c, l.output);
 }
 
 image get_maxpool_delta(maxpool_layer l)
@@ -15,7 +15,7 @@ image get_maxpool_delta(maxpool_layer l)
     int h = l.out_h;
     int w = l.out_w;
     int c = l.c;
-    return float_to_image(w,h,c,l.delta);
+    return float_to_image(w, h, c, l.delta);
 }
 
 maxpool_layer make_maxpool_layer(int batch, int h, int w, int c, int size, int stride, int padding)
@@ -27,38 +27,37 @@ maxpool_layer make_maxpool_layer(int batch, int h, int w, int c, int size, int s
     l.w = w;
     l.c = c;
     l.pad = padding;
-    l.out_w = (w + padding - size)/stride + 1;
-    l.out_h = (h + padding - size)/stride + 1;
+    l.out_w = (w + padding - size) / stride + 1;
+    l.out_h = (h + padding - size) / stride + 1;
     l.out_c = c;
     l.outputs = l.out_h * l.out_w * l.out_c;
-    l.inputs = h*w*c;
+    l.inputs = h * w * c;
     l.size = size;
     l.stride = stride;
     int output_size = l.out_h * l.out_w * l.out_c * batch;
-    #ifdef STREAM
-        cuda_malloc_int_host(&l.indexes, output_size*sizeof(int), __LINE__);
-        cuda_malloc_float_host(&l.output, output_size*sizeof(float), __LINE__);
-        cuda_malloc_float_host(&l.delta, output_size*sizeof(float), __LINE__);
-    #else
-        l.indexes = calloc(output_size, sizeof(int));
-        l.output =  calloc(output_size, sizeof(float));
-        l.delta =   calloc(output_size, sizeof(float));
-    #endif
+    l.indexes = calloc(output_size, sizeof(int));
+    //l.output = calloc(output_size, sizeof(float));
+    cudaHostAlloc((void **)&l.output, batch * output_size * sizeof(float *), cudaHostAllocMapped);
+    l.delta = calloc(output_size, sizeof(float));
     l.forward = forward_maxpool_layer;
     l.backward = backward_maxpool_layer;
-    #ifdef THREAD
+    l.exe_time = maxTime(l.size, l.out_w, l.out_h, l.out_c);
+#ifdef THREAD
     l.forward_thread = forward_maxpool_layer_thread;
-    #endif
-    #ifdef GPU
+#endif
+#ifdef GPU
+    l.exe_time_gpu = maxTime_gpu(l.size, l.out_w, l.out_h, l.out_c);
     l.forward_gpu = forward_maxpool_layer_gpu;
     l.backward_gpu = backward_maxpool_layer_gpu;
     l.indexes_gpu = cuda_make_int_array(0, output_size);
-    l.output_gpu  = cuda_make_array(l.output, output_size);
-    #ifdef THREAD
-        l.forward_gpu_thread = forward_maxpool_layer_gpu_thread;
-    #endif
-    l.delta_gpu   = cuda_make_array(l.delta, output_size);
-    #endif
+    l.output_gpu = cuda_make_array_2(l.output, output_size);
+    //lcs0815
+    l.gpu_util_weight = 7.21e-8;
+#ifdef THREAD
+    l.forward_gpu_thread = forward_maxpool_layer_gpu_thread;
+#endif
+    l.delta_gpu = cuda_make_array(l.delta, output_size);
+#endif
     fprintf(stderr, "max          %d x %d / %d  %4d x%4d x%4d   ->  %4d x%4d x%4d\n", size, size, stride, w, h, c, l.out_w, l.out_h, l.out_c);
     return l;
 }
@@ -67,10 +66,10 @@ void resize_maxpool_layer(maxpool_layer *l, int w, int h)
 {
     l->h = h;
     l->w = w;
-    l->inputs = h*w*l->c;
+    l->inputs = h * w * l->c;
 
-    l->out_w = (w + l->pad - l->size)/l->stride + 1;
-    l->out_h = (h + l->pad - l->size)/l->stride + 1;
+    l->out_w = (w + l->pad - l->size) / l->stride + 1;
+    l->out_h = (h + l->pad - l->size) / l->stride + 1;
     l->outputs = l->out_w * l->out_h * l->c;
     int output_size = l->outputs * l->batch;
 
@@ -78,43 +77,49 @@ void resize_maxpool_layer(maxpool_layer *l, int w, int h)
     l->output = realloc(l->output, output_size * sizeof(float));
     l->delta = realloc(l->delta, output_size * sizeof(float));
 
-    #ifdef GPU
+#ifdef GPU
     cuda_free((float *)l->indexes_gpu);
     cuda_free(l->output_gpu);
     cuda_free(l->delta_gpu);
     l->indexes_gpu = cuda_make_int_array(0, output_size);
-    l->output_gpu  = cuda_make_array(l->output, output_size);
-    l->delta_gpu   = cuda_make_array(l->delta,  output_size);
-    #endif
+    l->output_gpu = cuda_make_array(l->output, output_size);
+    l->delta_gpu = cuda_make_array(l->delta, output_size);
+#endif
 }
 
 void forward_maxpool_layer(const maxpool_layer l, network net)
 {
-    int b,i,j,k,m,n;
-    int w_offset = -l.pad/2;
-    int h_offset = -l.pad/2;
+    int b, i, j, k, m, n;
+    int w_offset = -l.pad / 2;
+    int h_offset = -l.pad / 2;
 
     int h = l.out_h;
     int w = l.out_w;
     int c = l.c;
 
-    for(b = 0; b < l.batch; ++b){
-        for(k = 0; k < c; ++k){
-            for(i = 0; i < h; ++i){
-                for(j = 0; j < w; ++j){
-                    int out_index = j + w*(i + h*(k + c*b));
+    for (b = 0; b < l.batch; ++b)
+    {
+        for (k = 0; k < c; ++k)
+        {
+            for (i = 0; i < h; ++i)
+            {
+                for (j = 0; j < w; ++j)
+                {
+                    int out_index = j + w * (i + h * (k + c * b));
                     float max = -FLT_MAX;
                     int max_i = -1;
-                    for(n = 0; n < l.size; ++n){
-                        for(m = 0; m < l.size; ++m){
-                            int cur_h = h_offset + i*l.stride + n;
-                            int cur_w = w_offset + j*l.stride + m;
-                            int index = cur_w + l.w*(cur_h + l.h*(k + b*l.c));
+                    for (n = 0; n < l.size; ++n)
+                    {
+                        for (m = 0; m < l.size; ++m)
+                        {
+                            int cur_h = h_offset + i * l.stride + n;
+                            int cur_w = w_offset + j * l.stride + m;
+                            int index = cur_w + l.w * (cur_h + l.h * (k + b * l.c));
                             int valid = (cur_h >= 0 && cur_h < l.h &&
                                          cur_w >= 0 && cur_w < l.w);
                             float val = (valid != 0) ? net.input[index] : -FLT_MAX;
                             max_i = (val > max) ? index : max_i;
-                            max   = (val > max) ? val   : max;
+                            max = (val > max) ? val : max;
                         }
                     }
                     l.output[out_index] = max;
@@ -125,38 +130,43 @@ void forward_maxpool_layer(const maxpool_layer l, network net)
     }
 }
 #ifdef THREAD
-void forward_maxpool_layer_thread(netlayer* input)
+void forward_maxpool_layer_thread(netlayer *input)
 {
-     
 
     network net = input->net;
     layer l = input->layer;
 
-    int b,i,j,k,m,n;
-    int w_offset = -l.pad/2;
-    int h_offset = -l.pad/2;
+    int b, i, j, k, m, n;
+    int w_offset = -l.pad / 2;
+    int h_offset = -l.pad / 2;
 
     int h = l.out_h;
     int w = l.out_w;
     int c = l.c;
 
-    for(b = 0; b < l.batch; ++b){
-        for(k = 0; k < c; ++k){
-            for(i = 0; i < h; ++i){
-                for(j = 0; j < w; ++j){
-                    int out_index = j + w*(i + h*(k + c*b));
+    for (b = 0; b < l.batch; ++b)
+    {
+        for (k = 0; k < c; ++k)
+        {
+            for (i = 0; i < h; ++i)
+            {
+                for (j = 0; j < w; ++j)
+                {
+                    int out_index = j + w * (i + h * (k + c * b));
                     float max = -FLT_MAX;
                     int max_i = -1;
-                    for(n = 0; n < l.size; ++n){
-                        for(m = 0; m < l.size; ++m){
-                            int cur_h = h_offset + i*l.stride + n;
-                            int cur_w = w_offset + j*l.stride + m;
-                            int index = cur_w + l.w*(cur_h + l.h*(k + b*l.c));
+                    for (n = 0; n < l.size; ++n)
+                    {
+                        for (m = 0; m < l.size; ++m)
+                        {
+                            int cur_h = h_offset + i * l.stride + n;
+                            int cur_w = w_offset + j * l.stride + m;
+                            int index = cur_w + l.w * (cur_h + l.h * (k + b * l.c));
                             int valid = (cur_h >= 0 && cur_h < l.h &&
                                          cur_w >= 0 && cur_w < l.w);
                             float val = (valid != 0) ? net.input[index] : -FLT_MAX;
                             max_i = (val > max) ? index : max_i;
-                            max   = (val > max) ? val   : max;
+                            max = (val > max) ? val : max;
                         }
                     }
                     l.output[out_index] = max;
@@ -165,10 +175,6 @@ void forward_maxpool_layer_thread(netlayer* input)
             }
         }
     }
-     
-
-     
-     
 }
 #endif
 
@@ -178,9 +184,9 @@ void backward_maxpool_layer(const maxpool_layer l, network net)
     int h = l.out_h;
     int w = l.out_w;
     int c = l.c;
-    for(i = 0; i < h*w*c*l.batch; ++i){
+    for (i = 0; i < h * w * c * l.batch; ++i)
+    {
         int index = l.indexes[i];
         net.delta[index] += l.delta[i];
     }
 }
-
