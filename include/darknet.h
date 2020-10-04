@@ -569,10 +569,9 @@ extern double gpu_total_time;
         float *output_gpu;
         float *workspace_gpu;
 #endif
-
-        //pthread_cond_t network_cond;
-        //pthread_mutex_t network_mutex;
         int index_n;
+        //20201004 hojin add priority
+        int priority;
     } network;
 
     typedef struct
