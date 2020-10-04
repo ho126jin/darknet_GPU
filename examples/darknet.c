@@ -3,6 +3,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
 
 extern void predict_classifier(char *datacfg, char *cfgfile, char *weightfile, char *filename, int top);
 extern void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filename, float thresh, float hier_thresh, char *outfile, int fullscreen);
@@ -449,176 +450,228 @@ void choiceNetwork()
 {
 }
 
-threadpool thpool;
+twin_thpool *twin_thp;
 //각 네트워크의 조건변수, mutex변수, wait를 위한 변수 선언 헤더에 extern변수로 지정
 pthread_cond_t *cond_t;
 pthread_mutex_t *mutex_t;
 int *cond_i;
 
+//#define n_net 8 //hojin 8->2
+
+//hojin each networknum
+#define n_des 8
+#define n_res 8
+#define n_alex 2
+#define n_vgg 2
+double gpu_total_time = 0;
+#define cpu_thread 7
+#define gpu_thread 1
+//kmsjames 2020 0819 for pwr mon
+static int pwr_ind=0;
+static int pwr_ind_finish =0;
+// void *pwr_mon_do(void)
+// {
+// 	char buffer[10];
+// 	int fd[6];
+// 	int val[6];
+// 	int total_pwr=0;
+
+//         FILE *fp = fopen("total_pwr_cpu_gpu.txt","a");
+
+// 	while(1){
+// 		if(pwr_ind == 0) continue;
+	
+// 		total_pwr = 0;	
+// 		fd[0] = open("/sys/bus/i2c/drivers/ina3221x/1-0040/iio_device/in_power0_input", O_RDONLY);
+// 		read(fd[0], buffer, 5);
+// 	 	val[0] = atoi(buffer);
+		
+// 		fd[1] = open("/sys/bus/i2c/drivers/ina3221x/1-0040/iio_device/in_power1_input", O_RDONLY);
+// 		read(fd[1], buffer, 5);
+// 	 	val[1] = atoi(buffer);
+		
+// 		fd[2] = open("/sys/bus/i2c/drivers/ina3221x/1-0040/iio_device/in_power2_input", O_RDONLY);
+// 		read(fd[2], buffer, 5);
+// 	 	val[2] = atoi(buffer);
+		
+// 		fd[3] = open("/sys/bus/i2c/drivers/ina3221x/1-0041/iio_device/in_power0_input", O_RDONLY);
+// 		read(fd[3], buffer, 5);
+// 	 	val[3] = atoi(buffer);
+		
+// 		fd[4] = open("/sys/bus/i2c/drivers/ina3221x/1-0041/iio_device/in_power1_input", O_RDONLY);
+// 		read(fd[4], buffer, 5);
+// 	 	val[4] = atoi(buffer);
+		
+// 		fd[5] = open("/sys/bus/i2c/drivers/ina3221x/1-0041/iio_device/in_power2_input", O_RDONLY);
+// 		read(fd[5], buffer, 5);
+// 	 	val[5] = atoi(buffer);
+		
+// 		for(int nu=0; nu<6;nu++){
+// 			total_pwr += val[nu];	
+// 			close(fd[nu]);
+// 		}	
+
+// 		if (fp)
+//     		{
+// 		        for(int nu =0; nu<6; nu++) fprintf(fp, " %d,",val[nu]);
+// 			fprintf(fp, "\n");
+// 			fprintf(fp, "total_pwr = %d\n", total_pwr);
+//     		}
+//     		else
+//     		{
+//         		fprintf(stderr, "file open error");
+//         		exit(1);
+//     		}
+// 		if(pwr_ind_finish == 1) break;
+
+// 		usleep(10);
+// 	}
+// 	fclose(fp);	
+// }
+FILE * timing;
+
 int main()
 {
-#ifdef STREAM
-    FILE *fp = fopen("stream.txt", "a");
-#else
-    FILE *fp = fopen("serial.txt", "a");
-#endif
-    fprintf(fp, "***** Des : %d , Res : %d , VGG : %d , Alex : %d *****\n", n_des, n_res, n_vgg, n_alex);
-    //fprintf(fp, "***** ThREAD NUM POOL : %d *****\n", THREAD_NUM_POOL);
-    //test_resize("data/bad.jpg");
-    //test_box();
-    //test_convolutional_layer();
-    /*
-    if(argc < 2){
-        fprintf(stderr, "usage: %s <function>\n", argv[0]);
-        return 0;
-    }
-    gpu_index = find_int_arg(argc, argv, "-i", 0);
-    if(find_arg(argc, argv, "-nogpu")) {
-        gpu_index = -1;
-    }*/
-
 #ifndef GPU
     gpu_index = -1;
 #else
+    gpu_index = 0;
     if (gpu_index >= 0)
     {
         cuda_set_device(gpu_index);
     }
-    #ifdef CUDNN
-        #ifdef TRHEAD
-            #ifdef STREAM
-                cudnn_handle_set_stream();
-            #else
-                cudnn_handle_set();
-            #endif
-        #endif
-    #endif
-    
+    cudaSetDeviceFlags(cudaDeviceMapHost);
+    timing = fopen("thread_cpu.txt","a+");
 #endif
 
 #ifdef THREAD
-    thpool = thpool_init(THREAD_NUM_POOL);
+    twin_thp = twin_thpool_init(cpu_thread,gpu_thread);
 #endif
 
+    //char** vgg = {"darknet", "classfier", "predict", "cfg/imagenet1k.data", "cfg/","", "data/eagle.jpg"};
+    //char** densenet = {"darknet", "classfier", "predict", "cfg/imagenet1k.data", "cfg/", "", "data/eagle.jpg"};
+    //char** resnet = {"darknet", "classfier", "predict", "cfg/imagenet1k.data", "cfg/", "", "data/eagle.jpg"};
+    char *alexName = "Alex";
+    char *vggName = "VGG";
     char *denseName = "Dense";
     char *resName = "Res";
-    char *vggName = "VGG";
-    char *alexName = "Alex";
 
     network *denseNetwork[n_des];
     network *resNetwork[n_res];
     network *vggNetwork[n_vgg];
     network *alexNetwork[n_alex];
 
-    int n_all = n_des + n_res + n_vgg + n_alex;
-
+    int i = 0;
+    int n_all = n_des+n_res+n_vgg+n_alex;
+    cudnn_handle_set_stream(n_all);
 #ifdef THREAD
     //변수 동적할당
     cond_t = (pthread_cond_t *)malloc(sizeof(pthread_cond_t) * n_all);
     mutex_t = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t) * n_all);
     cond_i = (int *)malloc(sizeof(int) * n_all);
 
-    for (int i = 0; i < n_all; i++)
+    for (i = 0; i < n_all; i++)
     {
         pthread_cond_init(&cond_t[i], NULL);
         pthread_mutex_init(&mutex_t[i], NULL);
         cond_i[i] = 0;
     }
-    if(fp){
-        fprintf(fp,"////////////////////////////////////////////////////////////THREAD ON : THPOOL %d\n",THREAD_NUM_POOL);
-    }else{
-        fprintf(stderr,"file open error");
-        exit(1);
-    }
-#else
-    if(fp){
-        fprintf(fp,"////////////////////////////////////////////////////////////THREAD OFF\n");
-    }else{
-        fprintf(stderr,"file open error");
-        exit(1);
-    } 
 #endif
-
-
 #if 0
-    for(unsigned int k=0; k<n_net; k++){
-        denseNetwork[k] = (network *)load_network("cfg/densenet201.cfg", "densenet201.weights",0);
+    unsigned k = 0;
+    for (k = 0; k < n_net; k++)
+    {
+        denseNetwork[k] = (network *)load_network("cfg/densenet201.cfg", "densenet201.weights", 0);
         denseNetwork[k]->index_n = k;
-        resNetwork[k] = (network *)load_network("cfg/resnet152.cfg", "resnet152.weights",0);
-        resNetwork[k]->index_n = k+n_net;
-        vggNetwork[k] = (network *)load_network("cfg/vgg-16.cfg","vgg16.weights",0);
-        vggNetwork[k]->index_n = k+(n_net*2);
-        alexNetwork[k] = (network *)load_network("cfg/alexnet.cfg","alexnet.weights",0);
-        alexNetwork[k]->index_n = k+(n_net*3);
+        resNetwork[k] = (network *)load_network("cfg/resnet152.cfg", "resnet152.weights", 0);
+        resNetwork[k]->index_n = k + n_net;
     }
 #endif
-
-    for (unsigned int k = 0; k < n_des; k++)
+    int k;
+     for (k = 0; k < n_des; k++)
     {
         denseNetwork[k] = (network *)load_network("cfg/densenet201.cfg", "densenet201.weights", 0);
         denseNetwork[k]->index_n = k;
     }
 
-    for (unsigned int k = 0; k < n_res; k++)
+    for (k = 0; k < n_res; k++)
     {
         resNetwork[k] = (network *)load_network("cfg/resnet152.cfg", "resnet152.weights", 0);
         resNetwork[k]->index_n = k + n_des;
     }
-    for (unsigned int k = 0; k < n_vgg; k++)
+    for (k = 0; k < n_vgg; k++)
     {
         vggNetwork[k] = (network *)load_network("cfg/vgg-16.cfg", "vgg-16.weights", 0);
         vggNetwork[k]->index_n = k + n_des + n_res;
     }
-    for (unsigned int k = 0; k < n_alex; k++)
+    for (k = 0; k < n_alex; k++)
     {
         alexNetwork[k] = (network *)load_network("cfg/alexnet.cfg", "alexnet.weights", 0);
         alexNetwork[k]->index_n = k + n_des + n_res + n_vgg;
     }
-
+//while(1){
+//    char c='n';
+//    printf("inference start y or n : ");
+//    scanf("%c", &c);
+//    getchar();
+//    if(c == 'n'){
+//	    break;
+//    }
     list *options = read_data_cfg("cfg/imagenet1k.data");
     char *name_list = option_find_str(options, "names", 0);
     if (!name_list)
         name_list = option_find_str(options, "labels", "data/labels.list");
     int top = option_find_int(options, "top", 1);
 
-    int i = 0;
     char **names = get_labels(name_list);
 
-    char buff[256];
-    char *input = buff;
+    char *buff = "data/eagle.jpg";
+    //char *input = buff;
     test *net_input_des[n_des];
     test *net_input_res[n_res];
     test *net_input_vgg[n_vgg];
     test *net_input_alex[n_alex];
 
-#if 0
-    while (1)
-    {
-        printf("Enter Image Path: ");
-        fflush(stdout);
-        input = fgets(input, 256, stdin);
-        if (!input)
-            continue;
-        strtok(input, "\n");
-        break;
-    }
-#endif
-    char * filename = "data/eagle.jpg";
-    strncpy(input, filename, 256);
-
     image im = load_image_color(buff, 0, 0);
 
     double time = what_time_is_it_now();
+
     pthread_t networkArray_des[n_des];
     pthread_t networkArray_res[n_res];
     pthread_t networkArray_vgg[n_vgg];
     pthread_t networkArray_alex[n_alex];
 
-    for (int i = 0; i < n_des; i++)
+//kmsjames 2020 0819 for power monitor thread
+   /* pthread_t *pwr_mon_thread;
+    if (pthread_create(&pwr_mon_thread, NULL, (void *)pwr_mon_do, NULL) < 0)
+    {
+            perror("pwr_mon thread error");
+            exit(0);
+    }
+
+*/
+
+    // for(int i=0; i<vggCount; ++i){
+    //     test * input = (test*)malloc(sizeof(test));
+    //     input->net = *vggNetwork;
+    //     input->im = im;
+    //     input->names = names;
+    //     input->netName = vggName;
+
+    //     pthread_create(&networkArray[count], NULL,predict_classifier2, input);
+    //     ++count;
+    // }
+    //
+
+//kmsjames 2020 0819 for power mon
+    pwr_ind = 1;
+cudaProfilerStart();
+
+    for (i = 0; i < n_des; i++)
     {
         net_input_des[i] = (test *)malloc(sizeof(test));
         net_input_des[i]->net = denseNetwork[i];
-        net_input_des[i]->input_path = input;
+        net_input_des[i]->input_path = buff;
         net_input_des[i]->names = names;
         net_input_des[i]->netName = denseName;
 
@@ -630,11 +683,11 @@ int main()
         }
     }
 
-    for (int i = 0; i < n_res; i++)
+    for (i = 0; i < n_res; i++)
     {
         net_input_res[i] = (test *)malloc(sizeof(test));
         net_input_res[i]->net = resNetwork[i];
-        net_input_res[i]->input_path = input;
+        net_input_res[i]->input_path = buff;
         net_input_res[i]->names = names;
         net_input_res[i]->netName = resName;
 
@@ -646,13 +699,13 @@ int main()
         }
     }
 
-    for (int i = 0; i < n_vgg; i++)
+    for (i = 0; i < n_vgg; i++)
     {
-        net_input_vgg[i] = (test *)malloc(sizeof(test));
-        net_input_vgg[i]->net = vggNetwork[i];
-        net_input_vgg[i]->input_path = input;
-        net_input_vgg[i]->names = names;
-        net_input_vgg[i]->netName = vggName;
+            net_input_vgg[i] = (test *)malloc(sizeof(test));
+            net_input_vgg[i]->net = vggNetwork[i];
+            net_input_vgg[i]->input_path = buff;
+            net_input_vgg[i]->names = names;
+            net_input_vgg[i]->netName = vggName;
 
         printf(" It's turn for vgg i = %d\n", i);
         if (pthread_create(&networkArray_vgg[i], NULL, (void *)predict_classifier2, net_input_vgg[i]) < 0)
@@ -662,13 +715,13 @@ int main()
         }
     }
 
-    for (int i = 0; i < n_alex; i++)
+    for (i = 0; i < n_alex; i++)
     {
-        net_input_alex[i] = (test *)malloc(sizeof(test));
-        net_input_alex[i]->net = alexNetwork[i];
-        net_input_alex[i]->input_path = input;
-        net_input_alex[i]->names = names;
-        net_input_alex[i]->netName = alexName;
+            net_input_alex[i] = (test *)malloc(sizeof(test));
+            net_input_alex[i]->net = alexNetwork[i];
+            net_input_alex[i]->input_path = buff;
+            net_input_alex[i]->names = names;
+            net_input_alex[i]->netName = alexName;
 
         printf(" It's turn for alex i = %d\n", i);
         if (pthread_create(&networkArray_alex[i], NULL, (void *)predict_classifier2, net_input_alex[i]) < 0)
@@ -677,34 +730,45 @@ int main()
             exit(0);
         }
     }
+    
+    //fprintf(stderr, "\n execution Time : %lf\n", what_time_is_it_now() - time);
 
-    for (int i = 0; i < n_des; i++)
+
+    for (i = 0; i < n_des; i++)
     {
         pthread_join(networkArray_des[i], NULL);
     }
-    for (int i = 0; i < n_res; i++)
+    for (i = 0; i < n_res; i++)
     {
         pthread_join(networkArray_res[i], NULL);
     }
-    for (int i = 0; i < n_vgg; i++)
+    for (i = 0; i < n_vgg; i++)
     {
         pthread_join(networkArray_vgg[i], NULL);
     }
-    for (int i = 0; i < n_alex; i++)
+    for (i = 0; i < n_alex; i++)
     {
         pthread_join(networkArray_alex[i], NULL);
     }
 
-
+#if 0
+    for (i = 0; i < n_net; i++)
+    {
+        pthread_join(networkArray_des[i], NULL);
+        pthread_join(networkArray_res[i], NULL);
+    }
+#endif
 #if 0
     //kmsjames 2020 0215
     for(i=0; i<THREAD_NUM_POOL;i++)
 	    pthread_join(thpool->threads[i]->pthread, NULL);
 #endif
-
+   FILE *fp =fopen("exetime.txt", "a+");
+    fprintf(stderr, "\n execution Time : %lf\n", what_time_is_it_now() - time);
+	cudaProfilerStop();
     if (fp)
     {
-        fprintf(fp, "\nexecution Time : %lf\n\n\n", what_time_is_it_now() - time);
+        fprintf(fp, "%lf\n", what_time_is_it_now() - time);
     }
     else
     {
@@ -712,11 +776,16 @@ int main()
         exit(1);
     }
     fclose(fp);
+
+//kmsjames 2020 0819 for power mon
+    pwr_ind_finish = 1;    
+
+//    fclose(fp);
     free(cond_t);
     free(mutex_t);
     free(cond_i);
     return 0;
-#if 0
+    /*
     if (0 == strcmp(argv[1], "average")){
         average(argc, argv);
     } else if (0 == strcmp(argv[1], "yolo")){
@@ -795,6 +864,5 @@ int main()
         test_resize(argv[2]);
     } else {
         fprintf(stderr, "Not an option: %s\n", argv[1]);
-    }
-#endif
+    }*/
 }
