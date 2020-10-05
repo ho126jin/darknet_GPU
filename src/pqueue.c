@@ -27,52 +27,59 @@ SOFTWARE.
 #include <string.h>
 #include <assert.h>
 
+#include "thpool.h"
 #include "pqueue.h"
 
 #define GAP 2
 
-#define MPANIC(x) ; assert(x != NULL)
+#define MPANIC(x) ; assert(x != NULL) //조건에 맞지않으면 중단
 
+static void insert_job(Priqueue *priqueue,struct job *newjob);  //add_job?
+static struct job pop_job(Priqueue *priqueue);
+static struct void swap_job(Priqueue *priqueue,unsigned int a, unsigned int b);
+
+/*
 static void insert_node(Priqueue *heap, Node* node);
 static Node* pop_node(Priqueue *heap);
 static void swap_node(Priqueue *heap, unsigned int a, unsigned int b);
+*/
 
-MHEAP_API Priqueue* priqueue_initialize(int initial_length){
+Priqueue* priqueue_init(int init_length){
   unsigned int mutex_status;
   
-  Priqueue *heap = (Priqueue *) malloc(sizeof(Priqueue)) MPANIC(heap);  
-  const size_t hsize = initial_length * sizeof(*heap->array);
+  Priqueue *priqueue = (Priqueue *) malloc(sizeof(Priqueue)) MPANIC(priqueue);  
+  const size_t qsize = initial_length * sizeof(*priqueue->array);
 
-  mutex_status = pthread_mutex_init(&(heap->lock), NULL);
+  mutex_status = pthread_mutex_init(&(priqueue->lock), NULL);
   if (mutex_status != 0) goto error;
   
-  heap->head = NULL;
-  heap->heap_size = initial_length;
-  heap->occupied = 0;
-  heap->current = 1;
-  heap->array = malloc(hsize) MPANIC(heap->array);
+  priqueue->head = NULL;
+  priqueue->heap_size = initial_length; //need?
+  priqueue->occupied = 0;
+  priqueue->current = 1;
+  priqueue->array = malloc(hsize) MPANIC(priqueue->array);
 
-  memset(heap->array, 0x00, hsize);
+  memset(priqueue->array, 0x00, qsize);
 
-  return heap;
+  return priqueue;
   
  error:
-  free(heap);
+  free(priqueue);
 
   return NULL;
 }
 
-static MHEAP_API MHEAPSTATUS realloc_heap(Priqueue *heap){
+static MHEAP_API MHEAPSTATUS realloc_heap(Priqueue *priqueue){
 
-  if (heap->occupied >= heap->heap_size){
-    const size_t arrsize = sizeof(*heap->array);
+  if (priqueue->occupied >= priqueue->heap_size){
+    const size_t arrsize = sizeof(*priqueue->array);
     
-    void **resized_heap;
-    resized_heap = realloc(heap->array, (2 * heap->heap_size) * arrsize);
-    if (resized_heap != NULL){
-      heap->heap_size *= 2;
-      heap->array = (Node**) resized_heap;
-      memset( (heap->array + heap->occupied + 1) , 0x00, (heap->heap_size / GAP) * arrsize );
+    void **resized_queue;
+    resized_queue = realloc(priqueue->array, (2 * priqueue->heap_size) * arrsize);
+    if (resized_queue != NULL){
+      priqueue->heap_size *= 2;
+      priqueue->array = (job**) resized_queue;
+      memset( (priqueue->array + priqueue->occupied + 1) , 0x00, (priqueue->heap_size / GAP) * arrsize );
       return MHEAP_OK;
     } else return MHEAP_REALLOCERROR;
   }
@@ -80,132 +87,129 @@ static MHEAP_API MHEAPSTATUS realloc_heap(Priqueue *heap){
   return MHEAP_NOREALLOC;
 }
 
+//jobqueue_push 
+MHEAP_API void priqueue_insert(Priqueue *priqueue, job *newjob, int priority){
 
-MHEAP_API void priqueue_insert(Priqueue *heap, Data *data, int priority){
-
-  Node *node = (Node *) malloc(sizeof(Node)) MPANIC(node);
-  node->priority = priority;
-  node->data = data;
-
+  //Node *node = (Node *) malloc(sizeof(Node)) MPANIC(node);
+  //node->priority = priority;
+  //node->data = data;
+  newjob->arg
   pthread_mutex_lock(&(heap->lock));
-  insert_node(heap,node);
+  insert_node(priqueue,newjob);
   pthread_mutex_unlock(&(heap->lock));
 }
 
-static void insert_node(Priqueue *heap, Node* node){
+static void insert_node(Priqueue *priqueue, job* newjob){
 
-  if (heap->current == 1 && heap->array[1] == NULL){
-    heap->head = node;
-    heap->array[1] = node;
-    heap->array[1]->index = heap->current;
-    heap->occupied++;
-    heap->current++;
+  if (priqueue->current == 1 && priqueue->array[1] == NULL){
+    priqueue->head = newjob;
+    priqueue->array[1] = newjob;
+    priqueue->array[1]->index = priqueue->current;
+    priqueue->occupied++;
+    priqueue->current++;
 
     return;
   }
 
-  if(heap->occupied >= heap->heap_size) {
+  if(priqueue->occupied >= priqueue->heap_size) {
     unsigned int realloc_status = realloc_heap(heap);
     assert(realloc_status == MHEAP_OK);
   }
   
-  if(heap->occupied <= heap->heap_size){
-    node->index = heap->current;
-    heap->array[heap->current] = node;
+  if(priqueue->occupied <= priqueue->heap_size){
+    newjob->index = priqueue->current;
+    priqueue->array[priqueue->current] = newjob;
 
-    int parent = (heap->current / GAP);
+    int parent = (priqueue->current / GAP);
 
-    if (heap->array[parent]->priority < node->priority){
-      heap->occupied++;
-      heap->current++;
-      int depth = heap->current / GAP;
-      int traverse = node->index;
+    if (priqueue->array[parent]->arg->net.priority < newjob->arg->net.priority){ //확인 필요
+      priqueue->occupied++;
+      priqueue->current++;
+      int depth = priqueue->current / GAP;
+      int traverse = newjob->index;
       
       while(depth >= 1){
 	
 	if (traverse == 1) break;
 	unsigned int parent = (traverse / GAP);
 	
-        if(heap->array[parent]->priority < heap->array[traverse]->priority){
-	  swap_node(heap, parent , traverse);
-          traverse = heap->array[parent]->index;
+        if(priqueue->array[parent]->arg->net.priority < priqueue->array[traverse]->arg->net.priority){
+	  swap_node(priqueue, parent , traverse);
+          traverse = priqueue->array[parent]->index;
         }
 	depth --;
       }
-      heap->head = heap->array[1];
+      priqueue->head = priqueue->array[1];
     } else {
-      heap->occupied++;
-      heap->current++;
+      priqueue->occupied++;
+      priqueue->current++;
     }
   }
 }
 
-void swap_node(Priqueue *heap, unsigned int parent, unsigned int child){
-  Node *tmp = heap->array[parent];
+void swap_node(Priqueue *priqueue, unsigned int parent, unsigned int child){
+  job *tmp = priqueue->array[parent];
 
-  heap->array[parent] = heap->array[child];
-  heap->array[parent]->index = tmp->index;
+  priqueue->array[parent] = priqueue->array[child];
+  priqueue->array[parent]->index = tmp->index;
 
-  heap->array[child] = tmp;
-  heap->array[child]->index = child;
+  priqueue->array[child] = tmp;
+  priqueue->array[child]->index = child;
   
 }
-
-MHEAP_API Node *priqueue_pop(Priqueue *heap){
-  Node *node = NULL;
+//jobqueue_pull 맞춰줘야함 pop_node 에서
+MHEAP_API job *priqueue_pop(Priqueue *priqueue){
+  job *job_p = NULL;
   
-  pthread_mutex_lock(&(heap->lock));
-  node = pop_node(heap);
-  pthread_mutex_unlock(&(heap->lock));
+  pthread_mutex_lock(&(priqueue->lock));
+  job_p = pop_node(priqueue);
+  pthread_mutex_unlock(&(priqueue->lock));
 
-  return node;
+  return job_p;
 }
 
-static Node *pop_node(Priqueue *heap){
-  Node *node = NULL;
+static job *pop_node(Priqueue *priqueue){
+  job *job_p = NULL;
   unsigned int i;
   unsigned int depth;
 
-  if (heap->current == 1) return node;
+  if (priqueue->current == 1) return job_p;
   
-  else if (heap->current >= 2 ){
-    node = heap->array[1];
-    heap->array[1] = heap->array[heap->current - 1];
-    heap->current -= 1;
-    heap->occupied -= 1;
+  else if (priqueue->current >= 2 ){
+    job_p = priqueue->array[1];
+    priqueue->array[1] = priqueue->array[priqueue->current - 1];
+    priqueue->current -= 1;
+    priqueue->occupied -= 1;
     
-    depth = (heap->current -1) / 2;
+    depth = (priqueue->current -1) / 2;
 
     for(i = 1; i<=depth; i++){
       
-      if (heap->array[i]->priority < heap->array[i * GAP]->priority ||
-	  heap->array[i]->priority < heap->array[(i * GAP)+1]->priority){
-	
-	unsigned int biggest = heap->array[i * GAP]->priority > heap->array[(i * GAP)+1]->priority ?
-	  heap->array[(i * GAP)]->index  :
-	  heap->array[(i * GAP)+1]->index;
-
-	swap_node(heap,i,biggest);
+      if (priqueue->array[i]->arg->net.priority < priqueue->array[i * GAP]->arg->net.priority || priqueue->array[i]->arg->net.priority < priqueue->array[(i * GAP)+1]->arg->net.priority){
+        unsigned int biggest = priqueue->array[i * GAP]->arg->net.priority > priqueue->array[(i * GAP)+1]->arg->net.priority ?
+	      priqueue->array[(i * GAP)]->index  :
+	      priqueue->array[(i * GAP)+1]->index;
+        swap_node(priqueue,i,biggest);
       }
-    }
+    }//bsem??
   }
 
-  return node;
+  return job_p;
 }
 
-MHEAP_API void priqueue_free(Priqueue *heap){  
-  if (heap->current >= 2 ) {
+MHEAP_API void priqueue_free(Priqueue *priqueue){  
+  if (priqueue->current >= 2 ) {
     unsigned int i;
-    for (i = 1; i <= heap->current; i++) priqueue_node_free(heap,heap->array[i]);
+    for (i = 1; i <= priqueue->current; i++) priqueue_job_free(priqueue,priqueue->array[i]);
   }
   
-  free(heap->head);
-  free(*heap->array);
-  free(heap->array);
-  free(heap);
+  free(priqueue->head);
+  free(*priqueue->array);
+  free(priqueue->array);
+  free(priqueue);
 }
 
-MHEAP_API void priqueue_node_free(Priqueue *heap,Node *node){
-  if (node != NULL) free(node->data->data);
-  free(node);  
+MHEAP_API void priqueue_job_free(Priqueue *priqueue,job *job_p){
+  //if (node != NULL) free(node->data->data);
+  free(job_p);  
 }

@@ -31,23 +31,24 @@ typedef struct _data Data;
 typedef struct _node Node;
 typedef struct _heap Priqueue;
 
-struct _data {
+struct _data { //X
   unsigned int type;
   void *data;
 };
 
-struct _node {
+struct _node { //X
   unsigned int priority;
   unsigned int index;
   struct _data *data;
 };
 
-struct _heap {
+struct _heap { //bsem flag 필요??
   struct _node *head;
   struct _node **array;
   unsigned int heap_size;
   unsigned int occupied;
   unsigned int current;
+  bsem *hasjobs;
   pthread_mutex_t lock;
 };
 
@@ -65,7 +66,7 @@ Priqueue *
 priqueue_initialize(int);
 
 void
-priqueue_insert(Priqueue *, Data *, int);
+priqueue_insert(Priqueue *, job *, int);
 
 Node *
 priqueue_pop(Priqueue *);
@@ -74,4 +75,4 @@ void
 priqueue_free(Priqueue *);
 
 void
-priqueue_node_free(Priqueue *, Node *);
+priqueue_node_free(Priqueue *, job *);
