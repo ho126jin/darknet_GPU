@@ -566,7 +566,7 @@ int main()
 
     int i = 0;
     //stream 아래로 내려가야함
-    cudnn_handle_set_stream(n_all);
+    //cudnn_handle_set_stream(n_all);
 #ifdef THREAD
     //변수 동적할당
     cond_t = (pthread_cond_t *)malloc(sizeof(pthread_cond_t) * n_all);
@@ -625,6 +625,15 @@ int main()
 //	    break;
 //    }
 // **********************stream 자리**************
+
+#ifdef STREAM
+    set_stream(n_all);
+#endif
+ 
+#ifdef CUDNN
+    cudnn_handle_set(n_all);
+#endif
+
     list *options = read_data_cfg("cfg/imagenet1k.data");
     char *name_list = option_find_str(options, "names", 0);
     if (!name_list)

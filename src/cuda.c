@@ -88,7 +88,7 @@ dim3 cuda_gridsize(size_t n)
     //printf("%ld %ld %ld %ld\n", n, x, y, x*y*BLOCK);
     return d;
 }
-
+/*
 #ifdef CUDNN
     #ifdef THREAD
         #ifdef STREAM
@@ -179,8 +179,60 @@ dim3 cuda_gridsize(size_t n)
     }
     #endif
 #endif
-    static int init_blas[n_a] = {0};
-    static cublasHandle_t handle_blas[n_a];
+*/
+
+#ifdef STREAM
+    static cudaStream_t stream[50];
+    void set_stream(int num){
+        int i;
+        for(i=0;i<num;i++) 
+            cudaStreamCreateWithFlags(&(stream[i]), cudaStreamNonBlocking);
+    }
+    
+#endif
+
+#ifdef CUDNN
+    static cudnnHandle_t handle[50];
+    static int init_[50] ={0,};
+    void cudnn_handle_set(int num)
+    {
+        int i;
+        for (i = 0; i < num; i++)
+        {
+            cudnnCreate(&handle[i]);
+            #ifdef STREAM    
+                cudaError_t status = cudnnSetStream(handle[i], stream[i]);
+                check_error(status);
+            #endif
+            //cudaStreamCreate(&(stream[i]));
+            init_[i] = 1;
+        }
+    }
+    
+        cudnnHandle_t cudnn_handle(int id)
+        {
+            #ifdef STREAM
+                int i = id;
+                if(!init_[i]){
+                        cudnnCreate(&handle[i]);
+                        cudaStreamCreateWithFlags(&(stream[i]), cudaStreamNonBlocking);
+                        //cudaStreamCreate(&(stream[i]));
+                        cudaError_t status = cudnnSetStream(handle[i], stream[i]);
+                        init_[i] = 1;
+                    }
+            #else
+                int i = cuda_get_device();
+                if (!init_[i])
+                {
+                    cudnnCreate(&handle[i]);
+                    init_[i] = 1;
+                }
+            #endif
+            return handle[i];
+        }
+#endif
+  static int init_blas[32] = {0};
+  static cublasHandle_t handle_blas[32];
 
 cublasHandle_t blas_handle_a(int idx)
 {
