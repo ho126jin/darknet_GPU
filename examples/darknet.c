@@ -450,13 +450,15 @@ void choiceNetwork()
 {
 }
 
-twin_thpool *twin_thp;
+//twin_thpool *twin_thp;
+threadpool thpool;
 //각 네트워크의 조건변수, mutex변수, wait를 위한 변수 선언 헤더에 extern변수로 지정
 pthread_cond_t *cond_t;
 pthread_mutex_t *mutex_t;
 int *cond_i;
 
-//#define n_net 8 //hojin 8->2
+//
+#define n_net 8 //hojin 8->2
 
 //hojin each networknum
 #define n_des 8
@@ -543,9 +545,10 @@ int main()
     cudaSetDeviceFlags(cudaDeviceMapHost);
     timing = fopen("thread_cpu.txt","a+");
 #endif
-
+    int n_all = n_des+n_res+n_vgg+n_alex;
 #ifdef THREAD
-    twin_thp = twin_thpool_init(cpu_thread,gpu_thread);
+    //twin_thp = twin_thpool_init(cpu_thread,gpu_thread);
+    thpool = thpool_init(gpu_thread,n_all);
 #endif
 
     //char** vgg = {"darknet", "classfier", "predict", "cfg/imagenet1k.data", "cfg/","", "data/eagle.jpg"};
@@ -562,7 +565,7 @@ int main()
     network *alexNetwork[n_alex];
 
     int i = 0;
-    int n_all = n_des+n_res+n_vgg+n_alex;
+    //stream 아래로 내려가야함
     cudnn_handle_set_stream(n_all);
 #ifdef THREAD
     //변수 동적할당
@@ -592,22 +595,26 @@ int main()
     {
         denseNetwork[k] = (network *)load_network("cfg/densenet201.cfg", "densenet201.weights", 0);
         denseNetwork[k]->index_n = k;
+        denseNetwork[k]->priority = k;
     }
 
     for (k = 0; k < n_res; k++)
     {
         resNetwork[k] = (network *)load_network("cfg/resnet152.cfg", "resnet152.weights", 0);
         resNetwork[k]->index_n = k + n_des;
+        resNetwork[k]->priority = k + n_des;
     }
     for (k = 0; k < n_vgg; k++)
     {
         vggNetwork[k] = (network *)load_network("cfg/vgg-16.cfg", "vgg-16.weights", 0);
         vggNetwork[k]->index_n = k + n_des + n_res;
+        vggNetwork[k]->prioirty = k + n_des + n_res;
     }
     for (k = 0; k < n_alex; k++)
     {
         alexNetwork[k] = (network *)load_network("cfg/alexnet.cfg", "alexnet.weights", 0);
         alexNetwork[k]->index_n = k + n_des + n_res + n_vgg;
+        alexNetwork[k]->prioirty = k + n_des + n_res + n_vgg;
     }
 //while(1){
 //    char c='n';
@@ -617,6 +624,7 @@ int main()
 //    if(c == 'n'){
 //	    break;
 //    }
+// **********************stream 자리**************
     list *options = read_data_cfg("cfg/imagenet1k.data");
     char *name_list = option_find_str(options, "names", 0);
     if (!name_list)
@@ -674,7 +682,7 @@ cudaProfilerStart();
         net_input_des[i]->input_path = buff;
         net_input_des[i]->names = names;
         net_input_des[i]->netName = denseName;
-
+        net_input_des[i]->net->priority =  
         printf(" It's turn for des i = %d\n", i);
         if (pthread_create(&networkArray_des[i], NULL, (void *)predict_classifier2, net_input_des[i]) < 0)
         {

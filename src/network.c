@@ -271,8 +271,8 @@ void forward_network(network *netp)
         nl.net = net;
         nl.flag = 0;
         //이 위치에 priorityqueue? thpool_add_work 에서 jobq대신 priqueue
-        lastFlag = add_job(twin_thp, forward_function, &nl, lastFlag, routeOrShort);
-       // routeOrShort[i] = lastFlag;
+        //lastFlag = add_job(twin_thp, forward_function, &nl, lastFlag, routeOrShort);
+        thpool_add_work(thpool,forward_function,&nl);
 
         while (cond_i[net.index_n] == 1)
         {
@@ -294,12 +294,11 @@ void forward_network(network *netp)
  //       pthread_mutex_unlock(&mutex_t[net.index_n]);
     }
   //  printf("%d cpu: %d gpu: %d\n", net.index_n, c, g);
-    if (lastFlag == 1){
-        cuda_synchronize(net.index_n, __LINE__);
+      cuda_synchronize(net.index_n, __LINE__);
 
         //cudaDeviceSynchronize();
        //pull_network_output(netp);
-    }
+    
 
 #endif
 #endif

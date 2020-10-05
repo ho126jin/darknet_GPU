@@ -46,18 +46,22 @@ static void swap_node(Priqueue *heap, unsigned int a, unsigned int b);
 
 Priqueue* priqueue_init(int init_length){
   unsigned int mutex_status;
-  
   Priqueue *priqueue = (Priqueue *) malloc(sizeof(Priqueue)) MPANIC(priqueue);  
   const size_t qsize = initial_length * sizeof(*priqueue->array);
+  priqueue->hasjobs = (bsem *)malloc(sizeof(struct bsem));
+  if(priqueue->hasjobs==NULL){
+    return NULL;
+  }
 
   mutex_status = pthread_mutex_init(&(priqueue->lock), NULL);
+  bsem_init(priqueue->has_jobs, 0);
   if (mutex_status != 0) goto error;
   
   priqueue->head = NULL;
   priqueue->heap_size = initial_length; //need?
   priqueue->occupied = 0;
   priqueue->current = 1;
-  priqueue->array = malloc(hsize) MPANIC(priqueue->array);
+  priqueue->array = malloc(qsize) MPANIC(priqueue->array);
 
   memset(priqueue->array, 0x00, qsize);
 
@@ -88,7 +92,7 @@ static MHEAP_API MHEAPSTATUS realloc_heap(Priqueue *priqueue){
 }
 
 //jobqueue_push 
-MHEAP_API void priqueue_insert(Priqueue *priqueue, job *newjob, int priority){
+MHEAP_API void priqueue_insert(Priqueue *priqueue, job *newjob){
 
   //Node *node = (Node *) malloc(sizeof(Node)) MPANIC(node);
   //node->priority = priority;
@@ -145,6 +149,7 @@ static void insert_node(Priqueue *priqueue, job* newjob){
       priqueue->current++;
     }
   }
+  bsem_post(priqueue->hasjobs);
 }
 
 void swap_node(Priqueue *priqueue, unsigned int parent, unsigned int child){
@@ -191,18 +196,19 @@ static job *pop_node(Priqueue *priqueue){
 	      priqueue->array[(i * GAP)+1]->index;
         swap_node(priqueue,i,biggest);
       }
-    }//bsem??
+    }bsem_post(priqueue->hasjobs);
   }
 
   return job_p;
 }
 
 MHEAP_API void priqueue_free(Priqueue *priqueue){  
+  bsem_reset(priqueue->hasjobs);
   if (priqueue->current >= 2 ) {
     unsigned int i;
     for (i = 1; i <= priqueue->current; i++) priqueue_job_free(priqueue,priqueue->array[i]);
   }
-  
+
   free(priqueue->head);
   free(*priqueue->array);
   free(priqueue->array);

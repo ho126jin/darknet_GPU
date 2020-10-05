@@ -43,8 +43,8 @@ struct _node { //X
 };
 
 struct _heap { //bsem flag 필요??
-  struct _node *head;
-  struct _node **array;
+  struct job *head;
+  struct job **array;
   unsigned int heap_size;
   unsigned int occupied;
   unsigned int current;
@@ -63,10 +63,10 @@ typedef enum {
 
 
 Priqueue *
-priqueue_initialize(int);
+priqueue_init(int);
 
 void
-priqueue_insert(Priqueue *, job *, int);
+priqueue_insert(Priqueue *, job *);
 
 Node *
 priqueue_pop(Priqueue *);

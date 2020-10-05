@@ -7,7 +7,7 @@ extern "C"
 
 	/* =================================== API ======================================= */
 
-	typedef struct thpool_ *threadpool;
+	typedef struct thpool_* threadpool;
 
 	/**
 		  * @brief  Initialize threadpool
@@ -26,7 +26,7 @@ extern "C"
 					   * @return threadpool    created threadpool on success,
 					    *                       NULL on error
 						 */
-	extern threadpool thpool_init(int num_threads);
+	extern threadpool thpool_init(int num_threads,int n_all);
 
 	/**
 		  * @brief Add work to the job queue
@@ -55,7 +55,7 @@ extern "C"
 								 * @param  arg_p         pointer to an argument
 								  * @return 0 on successs, -1 otherwise.
 								   */
-	extern int thpool_add_work(threadpool, void (*function_p)(void *), void *arg_p, double time);
+	extern int thpool_add_work(threadpool, void (*function_p)(void *), void *arg_p);
 
 	/**
 		  * @brief Wait for all queued jobs to finish
@@ -182,7 +182,7 @@ extern "C"
 		struct job *prev;			 /* pointer to previous job   */
 		void (*function)(void *arg); /* function pointer          */
 		void *arg;					 /* function's argument       */
-		double exe_time;
+		int index;
 	} job;
 
 	/* Job queue */
@@ -193,7 +193,6 @@ extern "C"
 		job *rear;				 /* pointer to rear  of queue */
 		bsem *has_jobs;			 /* flag as binary semaphore  */
 		int len;				 /* number of jobs in queue   */
-		double total_time;
 	} jobqueue;
 
 #define CPU_FLAG 0
@@ -205,8 +204,6 @@ extern "C"
 		int id;					  /* friendly id               */
 		pthread_t pthread;		  /* pointer to actual thread  */
 		struct thpool_ *thpool_p; /* access to thpool          */
-		double start_time;
-		double exe_time;
 	} thread;
 
 	/* Threadpool */
@@ -218,6 +215,7 @@ extern "C"
 		pthread_mutex_t thcount_lock;	  /* used for thread count etc */
 		pthread_cond_t threads_all_idle;  /* signal to thpool_wait     */
 		jobqueue jobqueue;				  /* job queue                 */
+		Priqueue *priqueue;
 		int thread_length;
 	} thpool_;
 

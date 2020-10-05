@@ -14,6 +14,7 @@
 
 #include "thpool.h"
 #include "utils.h"
+#include "pqueue.h"
 #include <sched.h>
 
 #ifdef THPOOL_DEBUG
@@ -105,7 +106,7 @@ static void bsem_wait(struct bsem *bsem_p);
 /* ========================== THREADPOOL ============================ */
 
 /* Initialise thread pool */
-struct thpool_ *thpool_init(int num_threads)
+struct thpool_ *thpool_init(int num_threads, int n_all)
 {
 
 	threads_on_hold = 0;
@@ -129,7 +130,7 @@ struct thpool_ *thpool_init(int num_threads)
 	thpool_p->thread_length = num_threads;
 
 	/* Initialise the job queue */
-	if (jobqueue_init(&thpool_p->jobqueue) == -1)
+	if ((thpool_p->priqueue = priqueue_init(n_all))==NULL)
 	{
 		err("thpool_init(): Could not allocate memory for job queue\n");
 		free(thpool_p);
@@ -141,7 +142,7 @@ struct thpool_ *thpool_init(int num_threads)
 	if (thpool_p->threads == NULL)
 	{
 		err("thpool_init(): Could not allocate memory for threads\n");
-		jobqueue_destroy(&thpool_p->jobqueue);
+		priqueue_free(&thpool_p->priqueue);
 		free(thpool_p);
 		return NULL;
 	}
@@ -156,6 +157,9 @@ struct thpool_ *thpool_init(int num_threads)
 	for (n = 0; n < num_threads; n++)
 	{
 		thread_init(thpool_p, &thpool_p->threads[n], n);
+		CPU_ZERO(&cpuset);
+		CPU_SET(n % 8 , &cpuset);
+		pthread_setaffinity_np(thpool_p->threads[n]->pthread,sizeof(cpu_set_t),&cpuset);
 #if THPOOL_DEBUG
 		printf("THPOOL_DEBUG: Created thread %d in pool \n", n);
 #endif
@@ -170,7 +174,7 @@ struct thpool_ *thpool_init(int num_threads)
 }
 
 /* Add work to the thread pool */
-int thpool_add_work(thpool_ *thpool_p, void (*function_p)(void *), void *arg_p, double time)
+int thpool_add_work(thpool_ *thpool_p, void (*function_p)(void *), void *arg_p)
 {
 	job *newjob;
 
@@ -184,13 +188,13 @@ int thpool_add_work(thpool_ *thpool_p, void (*function_p)(void *), void *arg_p, 
 	/* add function and argument */
 	newjob->function = function_p;
 	newjob->arg = arg_p;
-	newjob->exe_time = time;
 	/* add job to queue */
-	jobqueue_push(&thpool_p->jobqueue, newjob);
+	priqueue_insert(&thpool_p->priqueue, newjob);
 
 	return 0;
 }
 
+// thpool_wait no use no change
 /* Wait until all jobs have finished */
 void thpool_wait(thpool_ *thpool_p)
 {
@@ -202,6 +206,7 @@ void thpool_wait(thpool_ *thpool_p)
 	pthread_mutex_unlock(&thpool_p->thcount_lock);
 }
 
+// thpool_destroy no use no change
 /* Destroy the threadpool */
 void thpool_destroy(thpool_ *thpool_p)
 {
@@ -221,7 +226,7 @@ void thpool_destroy(thpool_ *thpool_p)
 	time(&start);
 	while (tpassed < TIMEOUT && thpool_p->num_threads_alive)
 	{
-		bsem_post_all(thpool_p->jobqueue.has_jobs);
+		bsem_post_all(thpool_p->priqueue.has_jobs);
 		time(&end);
 		tpassed = difftime(end, start);
 	}
@@ -229,13 +234,13 @@ void thpool_destroy(thpool_ *thpool_p)
 	/* Poll remaining threads */
 	while (thpool_p->num_threads_alive)
 	{
-		fprintf(stderr, "xxxxxxxxxxxxxxx\n");
-		bsem_post_all(thpool_p->jobqueue.has_jobs);
+		//fprintf(stderr, "xxxxxxxxxxxxxxx\n");
+		bsem_post_all(thpool_p->priqueue.has_jobs);
 		sleep(1);
 	}
 
 	/* Job queue cleanup */
-	jobqueue_destroy(&thpool_p->jobqueue);
+	priqueue_free(&thpool_p->priqueue);
 	/* Deallocs */
 	int n;
 	for (n = 0; n < threads_total; n++)
@@ -371,7 +376,7 @@ static void *thread_do(struct thread *thread_p)
 	while (threads_keepalive)
 	{
 
-		bsem_wait(thpool_p->jobqueue.has_jobs);
+		bsem_wait(thpool_p->priqueue.has_jobs);
 
 		if (threads_keepalive)
 		{
@@ -383,7 +388,7 @@ static void *thread_do(struct thread *thread_p)
 			/* Read job from queue and execute it */
 			void (*func_buff)(void *);
 			void *arg_buff;
-			job *job_p = jobqueue_pull(&thpool_p->jobqueue);
+			job *job_p = priqueue_pop(&thpool_p->priqueue);
 			if (job_p)
 			{
 				func_buff = job_p->function;
