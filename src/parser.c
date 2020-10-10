@@ -851,6 +851,9 @@ network *parse_network_cfg(char *filename)
         option_unused(options);
         net->layers[count] = l;
         if (l.workspace_size > workspace_size) workspace_size = l.workspace_size;
+	#ifdef CUDNN
+        if (l.workspace_size_cudnn > workspace_size) workspace_size = l.workspace_size_cudnn;
+        #endif
         free_section(s);
         n = n->next;
         ++count;

@@ -5,6 +5,7 @@
 #include <string.h>
 #include <pthread.h>
 #include "thpool.h"
+#include "pqueue.h"
 #include "thpool_ex.h"
 #ifdef GPU
 #define BLOCK 512
@@ -25,7 +26,8 @@ extern "C"
 
 #define SECRET_NUM -1234
     extern int gpu_index;
-    extern twin_thpool *twin_thp;
+    extern threadpool thpool;
+    //extern twin_thpool *twin_thp;
 #define THREAD_NUM_POOL 8 // no use
 #define n_loop 16 //hojin # of loop classifier2 no use
 #ifdef THREAD
@@ -394,6 +396,10 @@ extern double gpu_total_time;
         tree *softmax_tree;
 
         size_t workspace_size;
+	//2020-06-09 hojin 
+    	#ifdef CUDNN
+        size_t workspace_size_cudnn;
+    	#endif
         double exe_time;
 #ifdef GPU
         double exe_time_gpu;
@@ -905,11 +911,14 @@ extern double gpu_total_time;
     float rand_uniform(float min, float max);
     network *copy_network(network *);
 #ifdef STREAM
-    void cudnn_handle_set_stream(int num);
+    void set_stream(int num);
     void add_bias_gpu_stream(float *output, float *biases, int batch, int n, int size, int id);
     void fill_gpu_stream(int N, float ALPHA, float *X, int INCX, int id);
 #endif
 
+#ifdef CUDNN
+    void cudnn_handle_set(int num);
+#endif
     typedef struct _test
     {
         network *net;

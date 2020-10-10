@@ -25,7 +25,6 @@ SOFTWARE.
 #ifndef MHEAP_H
 #define MHEAP_H
 #endif
-
 #define MHEAP_API
 typedef struct _data Data;
 typedef struct _node Node;
@@ -42,13 +41,13 @@ struct _node { //X
   struct _data *data;
 };
 
-struct _heap { //bsem flag 필요??
+struct _heap {
   struct job *head;
   struct job **array;
   unsigned int heap_size;
   unsigned int occupied;
   unsigned int current;
-  bsem *hasjobs;
+  struct bsem *hasjobs;
   pthread_mutex_t lock;
 };
 
@@ -66,7 +65,7 @@ Priqueue *
 priqueue_init(int);
 
 void
-priqueue_insert(Priqueue *, job *);
+priqueue_insert(Priqueue *, struct job *);
 
 Node *
 priqueue_pop(Priqueue *);
@@ -75,4 +74,4 @@ void
 priqueue_free(Priqueue *);
 
 void
-priqueue_node_free(Priqueue *, job *);
+priqueue_node_free(Priqueue *, struct job *);

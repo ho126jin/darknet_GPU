@@ -97,7 +97,7 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
                 l.convDesc,
                 l.fw_algo,
                 net.workspace,
-                l.workspace_size,
+                l.workspace_size_cudnn,
                 &one,
                 l.dstTensorDesc,
                 l.output_gpu);
@@ -200,7 +200,7 @@ void forward_convolutional_layer_gpu_thread(netlayer* input)
                 l.convDesc,
                 l.fw_algo,
                 net.workspace_gpu,
-                l.workspace_size,
+                l.workspace_size_cudnn,
                 &one,
                 l.dstTensorDesc,
                 l.output_gpu);

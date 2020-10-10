@@ -14,7 +14,6 @@
 
 #include "thpool.h"
 #include "utils.h"
-#include "pqueue.h"
 #include <sched.h>
 
 #ifdef THPOOL_DEBUG
@@ -226,7 +225,7 @@ void thpool_destroy(thpool_ *thpool_p)
 	time(&start);
 	while (tpassed < TIMEOUT && thpool_p->num_threads_alive)
 	{
-		bsem_post_all(thpool_p->priqueue.has_jobs);
+		bsem_post_all(thpool_p->priqueue->hasjobs);
 		time(&end);
 		tpassed = difftime(end, start);
 	}
@@ -235,7 +234,7 @@ void thpool_destroy(thpool_ *thpool_p)
 	while (thpool_p->num_threads_alive)
 	{
 		//fprintf(stderr, "xxxxxxxxxxxxxxx\n");
-		bsem_post_all(thpool_p->priqueue.has_jobs);
+		bsem_post_all(thpool_p->priqueue->hasjobs);
 		sleep(1);
 	}
 
@@ -376,7 +375,7 @@ static void *thread_do(struct thread *thread_p)
 	while (threads_keepalive)
 	{
 
-		bsem_wait(thpool_p->priqueue.has_jobs);
+		bsem_wait(thpool_p->priqueue->hasjobs);
 
 		if (threads_keepalive)
 		{
@@ -393,8 +392,7 @@ static void *thread_do(struct thread *thread_p)
 			{
 				func_buff = job_p->function;
 				arg_buff = job_p->arg;
-				thread_p->start_time = what_time_is_it_now();
-				thread_p->exe_time = job_p->exe_time;
+				//thread_p->exe_time = job_p->exe_time;
 //				fprintf(timing, "%d,%lf\n", ((netlayer*)arg_buff)->net.index_n, what_time_is_it_now());
 				func_buff(arg_buff);
 				free(job_p);
@@ -436,7 +434,7 @@ static int jobqueue_init(jobqueue *jobqueue_p)
 	{
 		return -1;
 	}
-	jobqueue_p->total_time = 0.0;
+	//jobqueue_p->total_time = 0.0;
 	pthread_mutex_init(&(jobqueue_p->rwmutex), NULL);
 	bsem_init(jobqueue_p->has_jobs, 0);
 
@@ -479,7 +477,7 @@ static void jobqueue_push(jobqueue *jobqueue_p, struct job *newjob)
 		jobqueue_p->rear = newjob;
 	}
 	jobqueue_p->len++;
-	jobqueue_p->total_time += newjob->exe_time;
+	//jobqueue_p->total_time += newjob->exe_time;
 	bsem_post(jobqueue_p->has_jobs);
 	pthread_mutex_unlock(&jobqueue_p->rwmutex);
 }
@@ -507,13 +505,13 @@ static struct job *jobqueue_pull(jobqueue *jobqueue_p)
 		jobqueue_p->front = NULL;
 		jobqueue_p->rear = NULL;
 		jobqueue_p->len = 0;
-		jobqueue_p->total_time = 0.0;
+		//jobqueue_p->total_time = 0.0;
 		break;
 
 	default: /* if >1 jobs in queue */
 		jobqueue_p->front = job_p->prev;
 		jobqueue_p->len--;
-		jobqueue_p->total_time -= job_p->exe_time;
+		//jobqueue_p->total_time -= job_p->exe_time;
 		/* more than one job in queue -> post it */
 		bsem_post(jobqueue_p->has_jobs);
 	}

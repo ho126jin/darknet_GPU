@@ -4,7 +4,6 @@
 extern "C"
 {
 #endif
-
 	/* =================================== API ======================================= */
 
 	typedef struct thpool_* threadpool;
@@ -167,7 +166,7 @@ extern "C"
 
 #if 1 // 2020 0206 hojin
 	/* ========================== STRUCTURES ============================ */
-
+typedef struct _heap Priqueue;
 	/* Binary semaphore */
 	typedef struct bsem
 	{

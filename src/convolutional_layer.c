@@ -89,7 +89,7 @@ image get_convolutional_delta(convolutional_layer l)
 {
     return float_to_image(l.out_w, l.out_h, l.out_c, l.delta);
 }
-
+/*
 static size_t get_workspace_size(layer l)
 {
 #ifdef CUDNN
@@ -129,6 +129,47 @@ static size_t get_workspace_size(layer l)
 #endif
     return (size_t)l.out_h * l.out_w * l.size * l.size * l.c / l.groups * sizeof(float);
 }
+*/
+
+//2020-06-09 hojin cudnnn workspace
+static size_t get_workspace_size(layer l){
+
+    return (size_t)l.out_h*l.out_w*l.size*l.size*l.c/l.groups*sizeof(float);           
+}
+
+#ifdef CUDNN
+static size_t get_cudnn_workspace_size(layer l){
+    if(gpu_index >= 0){
+        size_t most = 0;
+        size_t s = 0;
+        cudnnGetConvolutionForwardWorkspaceSize(cudnn_handle(0),
+                l.srcTensorDesc,
+                l.weightDesc,
+                l.convDesc,
+                l.dstTensorDesc,
+                l.fw_algo,
+                &s);
+        if (s > most) most = s;
+        cudnnGetConvolutionBackwardFilterWorkspaceSize(cudnn_handle(0),
+                l.srcTensorDesc,
+                l.ddstTensorDesc,
+                l.convDesc,
+                l.dweightDesc,
+                l.bf_algo,
+                &s);
+        if (s > most) most = s;
+        cudnnGetConvolutionBackwardDataWorkspaceSize(cudnn_handle(0),
+                l.weightDesc,
+                l.ddstTensorDesc,
+                l.convDesc,
+                l.dsrcTensorDesc,
+                l.bd_algo,
+                &s);
+        if (s > most) most = s;
+            return most;
+    }
+}
+#endif
 
 #ifdef GPU
 #ifdef CUDNN
@@ -355,6 +396,9 @@ convolutional_layer make_convolutional_layer(int batch, int h, int w, int c, int
     }
 #endif
     l.workspace_size = get_workspace_size(l);
+#ifdef CUDNN
+    l.workspace_size_cudnn = get_cudnn_workspace_size(l);
+#endif
     l.activation = activation;
 
     fprintf(stderr, "conv  %5d %2d x%2d /%2d  %4d x%4d x%4d   ->  %4d x%4d x%4d  %5.3f BFLOPs\n", n, size, size, stride, w, h, c, l.out_w, l.out_h, l.out_c, (2.0 * l.n * l.size * l.size * l.c / l.groups * l.out_h * l.out_w) / 1000000000.);

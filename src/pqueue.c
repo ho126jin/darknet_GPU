@@ -27,16 +27,16 @@ SOFTWARE.
 #include <string.h>
 #include <assert.h>
 
-#include "thpool.h"
+//#include "thpool.h"
 #include "pqueue.h"
 
 #define GAP 2
 
 #define MPANIC(x) ; assert(x != NULL) //조건에 맞지않으면 중단
 
-static void insert_job(Priqueue *priqueue,struct job *newjob);  //add_job?
+static void insert_job(Priqueue *priqueue,struct job *newjob);
 static struct job pop_job(Priqueue *priqueue);
-static struct void swap_job(Priqueue *priqueue,unsigned int a, unsigned int b);
+static void swap_job(Priqueue *priqueue,unsigned int a, unsigned int b);
 
 /*
 static void insert_node(Priqueue *heap, Node* node);
@@ -47,7 +47,7 @@ static void swap_node(Priqueue *heap, unsigned int a, unsigned int b);
 Priqueue* priqueue_init(int init_length){
   unsigned int mutex_status;
   Priqueue *priqueue = (Priqueue *) malloc(sizeof(Priqueue)) MPANIC(priqueue);  
-  const size_t qsize = initial_length * sizeof(*priqueue->array);
+  const size_t qsize = init_length * sizeof(*priqueue->array);
   priqueue->hasjobs = (bsem *)malloc(sizeof(struct bsem));
   if(priqueue->hasjobs==NULL){
     return NULL;
