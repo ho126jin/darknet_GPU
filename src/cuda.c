@@ -80,8 +80,58 @@ void check_error_line(cudaError_t status, int line)
     }
 }
 
-static cudaStream_t stream[50];
-static int init_stream[50] ={ 0, };
+#ifdef STREAM
+    static cudaStream_t stream[50];
+    static int init_stream[50] ={ 0, };
+    void set_stream(int num){
+        int i;
+        for(i=0;i<num;i++) 
+            cudaStreamCreateWithFlags(&(stream[i]), cudaStreamNonBlocking);
+    }
+    
+#endif
+
+#ifdef CUDNN
+    static cudnnHandle_t handle[50];
+    static int init_[50] ={0,};
+    void cudnn_handle_set(int num)
+    {
+        int i;
+        for (i = 0; i < num; i++)
+        {
+            cudnnCreate(&handle[i]);
+            #ifdef STREAM    
+                cudaError_t status = cudnnSetStream(handle[i], stream[i]);
+                check_error(status);
+            #endif
+            //cudaStreamCreate(&(stream[i]));
+            init_[i] = 1;
+        }
+    }
+    
+        cudnnHandle_t cudnn_handle(int id)
+        {
+            #ifdef STREAM
+                int i = id;
+                if(!init_[i]){
+                        cudnnCreate(&handle[i]);
+                        cudaStreamCreateWithFlags(&(stream[i]), cudaStreamNonBlocking);
+                        //cudaStreamCreate(&(stream[i]));
+                        cudaError_t status = cudnnSetStream(handle[i], stream[i]);
+                        init_[i] = 1;
+                    }
+            #else
+                int i = cuda_get_device();
+                if (!init_[i])
+                {
+                    cudnnCreate(&handle[i]);
+                    init_[i] = 1;
+                }
+            #endif
+            return handle[i];
+        }
+#endif
+
 
 void cudnn_handle_set_stream(int num)
 {

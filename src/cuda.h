@@ -17,6 +17,7 @@ void cuda_synchronize(int id, int line);
 cudaStream_t usedstream(int id);
 #ifdef CUDNN
 cudnnHandle_t cudnn_handle();
+cudnnHandle_t cudnn_handle(int id);
 #endif
 
 #endif
