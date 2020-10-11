@@ -167,13 +167,13 @@ MHEAP_API job *priqueue_pop(Priqueue *priqueue){
   job *job_p = NULL;
   
   pthread_mutex_lock(&(priqueue->lock));
-  job_p = pop_node(priqueue);
+  job_p = pop_job(priqueue);
   pthread_mutex_unlock(&(priqueue->lock));
 
   return job_p;
 }
 
-static job *pop_node(Priqueue *priqueue){
+static job *pop_job(Priqueue *priqueue){
   job *job_p = NULL;
   unsigned int i;
   unsigned int depth;

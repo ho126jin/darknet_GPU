@@ -4,6 +4,12 @@
 extern "C"
 {
 #endif
+
+#ifndef MHEAP_H
+#define MHEAP_H
+#endif
+#define MHEAP_API
+
 	/* =================================== API ======================================= */
 
 	typedef struct thpool_* threadpool;
@@ -164,6 +170,20 @@ extern "C"
 						  */
 	extern int thpool_num_threads_working(threadpool);
 
+	Priqueue *
+	priqueue_init(int);
+
+	void
+	priqueue_insert(Priqueue *, job *);
+
+	job *
+	priqueue_pop(Priqueue *);
+
+	void
+	priqueue_free(Priqueue *);
+
+	void
+	priqueue_job_free(Priqueue *, job *);
 #if 1 // 2020 0206 hojin
 	/* ========================== STRUCTURES ============================ */
 typedef struct _heap Priqueue;
@@ -193,6 +213,28 @@ typedef struct _heap Priqueue;
 		bsem *has_jobs;			 /* flag as binary semaphore  */
 		int len;				 /* number of jobs in queue   */
 	} jobqueue;
+
+	/*Priority Queue*/
+	struct _heap 
+	{
+		struct job *head;
+  		struct job **array;
+  		unsigned int heap_size;
+  		unsigned int occupied;
+  		unsigned int current;
+  		struct bsem *hasjobs;
+  		pthread_mutex_t lock;
+	};
+
+	typedef enum 
+	{
+  		MHEAP_OK = 0,
+  		MHEAP_EMPTY,
+  		MHEAP_FAILED,
+  		MHEAP_REALLOCERROR,
+  		MHEAP_NOREALLOC,
+  		MHEAP_FATAL
+	}MHEAPSTATUS;
 
 #define CPU_FLAG 0
 #define GPU_FLAG 1

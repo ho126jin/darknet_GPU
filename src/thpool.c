@@ -8,6 +8,8 @@
 #include <pthread.h>
 #include <errno.h>
 #include <time.h>
+#include <string.h>
+#include <assert.h>
 #if defined(__linux__)
 #include <sys/prctl.h>
 #endif
@@ -29,9 +31,12 @@
 #endif
 
 #define RT_THREAD 1
+#define GAP 2
+#define MPANIC(x) ; assert(x != NULL) //조건에 맞지않으면 중단
 
 static volatile int threads_keepalive;
 static volatile int threads_on_hold;
+
 
 #if 0 // 2020 0206 hojin
 /* ========================== STRUCTURES ============================ */
@@ -101,6 +106,10 @@ static void bsem_reset(struct bsem *bsem_p);
 static void bsem_post(struct bsem *bsem_p);
 static void bsem_post_all(struct bsem *bsem_p);
 static void bsem_wait(struct bsem *bsem_p);
+
+static void insert_job(Priqueue *priqueue,struct job *newjob);
+static job* pop_job(Priqueue *priqueue);
+static void swap_job(Priqueue *priqueue,unsigned int a, unsigned int b);
 
 /* ========================== THREADPOOL ============================ */
 
@@ -525,6 +534,180 @@ static void jobqueue_destroy(jobqueue *jobqueue_p)
 {
 	jobqueue_clear(jobqueue_p);
 	free(jobqueue_p->has_jobs);
+}
+
+/* ======================== PRIORITY QUEUE ========================= */
+
+Priqueue* priqueue_init(int init_length){
+  unsigned int mutex_status;
+  Priqueue *priqueue = (Priqueue *) malloc(sizeof(Priqueue)) MPANIC(priqueue);  
+  const size_t qsize = init_length * sizeof(*priqueue->array);
+  priqueue->hasjobs = (bsem *)malloc(sizeof(struct bsem));
+  if(priqueue->hasjobs==NULL){
+    return NULL;
+  }
+
+  mutex_status = pthread_mutex_init(&(priqueue->lock), NULL);
+  bsem_init(priqueue->has_jobs, 0);
+  if (mutex_status != 0) goto error;
+  
+  priqueue->head = NULL;
+  priqueue->heap_size = init_length; //need?
+  priqueue->occupied = 0;
+  priqueue->current = 1;
+  priqueue->array = malloc(qsize) MPANIC(priqueue->array);
+
+  memset(priqueue->array, 0x00, qsize);
+
+  return priqueue;
+  
+ error:
+  free(priqueue);
+
+  return NULL;
+}
+
+static MHEAP_API MHEAPSTATUS realloc_heap(Priqueue *priqueue){
+
+  if (priqueue->occupied >= priqueue->heap_size){
+    const size_t arrsize = sizeof(*priqueue->array);
+    
+    void **resized_queue;
+    resized_queue = realloc(priqueue->array, (2 * priqueue->heap_size) * arrsize);
+    if (resized_queue != NULL){
+      priqueue->heap_size *= 2;
+      priqueue->array = (job**) resized_queue;
+      memset( (priqueue->array + priqueue->occupied + 1) , 0x00, (priqueue->heap_size / GAP) * arrsize );
+      return MHEAP_OK;
+    } else return MHEAP_REALLOCERROR;
+  }
+
+  return MHEAP_NOREALLOC;
+}
+
+ 
+MHEAP_API void priqueue_insert(Priqueue *priqueue, job *newjob){
+  
+  pthread_mutex_lock(&(heap->lock));
+  insert_job(priqueue,newjob);
+  pthread_mutex_unlock(&(heap->lock));
+
+}
+
+static void insert_job(Priqueue *priqueue, job* newjob){
+
+  if (priqueue->current == 1 && priqueue->array[1] == NULL){
+    priqueue->head = newjob;
+    priqueue->array[1] = newjob;
+    priqueue->array[1]->index = priqueue->current;
+    priqueue->occupied++;
+    priqueue->current++;
+
+    return;
+  }
+
+  if(priqueue->occupied >= priqueue->heap_size) {
+    unsigned int realloc_status = realloc_heap(heap);
+    assert(realloc_status == MHEAP_OK);
+  }
+  
+  if(priqueue->occupied <= priqueue->heap_size){
+    newjob->index = priqueue->current;
+    priqueue->array[priqueue->current] = newjob;
+
+    int parent = (priqueue->current / GAP);
+
+    if (priqueue->array[parent]->arg->net.priority < newjob->arg->net.priority){ //확인 필요
+      priqueue->occupied++;
+      priqueue->current++;
+      int depth = priqueue->current / GAP;
+      int traverse = newjob->index;
+	  
+	  while(depth >= 1){
+		  if (traverse == 1) break;
+		  unsigned int parent = (traverse / GAP);
+		  
+		  if(priqueue->array[parent]->arg->net.priority < priqueue->array[traverse]->arg->net.priority){
+			swap_job(priqueue, parent , traverse);
+        	traverse = priqueue->array[parent]->index;
+		  }
+		  depth --;
+      }
+    priqueue->head = priqueue->array[1];
+    }else{
+    	priqueue->occupied++;
+    	priqueue->current++;
+    }
+  }
+  bsem_post(priqueue->hasjobs);
+}
+
+void swap_job(Priqueue *priqueue, unsigned int parent, unsigned int child){
+  job *tmp = priqueue->array[parent];
+
+  priqueue->array[parent] = priqueue->array[child];
+  priqueue->array[parent]->index = tmp->index;
+
+  priqueue->array[child] = tmp;
+  priqueue->array[child]->index = child;
+  
+}
+
+MHEAP_API job *priqueue_pop(Priqueue *priqueue){
+  job *job_p = NULL;
+  
+  pthread_mutex_lock(&(priqueue->lock));
+  job_p = pop_job(priqueue);
+  pthread_mutex_unlock(&(priqueue->lock));
+
+  return job_p;
+}
+
+static job *pop_job(Priqueue *priqueue){
+  job *job_p = NULL;
+  unsigned int i;
+  unsigned int depth;
+
+  if (priqueue->current == 1) return job_p;
+  
+  else if (priqueue->current >= 2 ){
+    job_p = priqueue->array[1];
+    priqueue->array[1] = priqueue->array[priqueue->current - 1];
+    priqueue->current -= 1;
+    priqueue->occupied -= 1;
+    
+    depth = (priqueue->current -1) / 2;
+
+    for(i = 1; i<=depth; i++){
+      
+      if (priqueue->array[i]->arg->net.priority < priqueue->array[i * GAP]->arg->net.priority || priqueue->array[i]->arg->net.priority < priqueue->array[(i * GAP)+1]->arg->net.priority){
+        unsigned int biggest = priqueue->array[i * GAP]->arg->net.priority > priqueue->array[(i * GAP)+1]->arg->net.priority ?
+	      priqueue->array[(i * GAP)]->index  :
+	      priqueue->array[(i * GAP)+1]->index;
+        swap_node(priqueue,i,biggest);
+      }
+    }bsem_post(priqueue->hasjobs);
+  }
+
+  return job_p;
+}
+
+MHEAP_API void priqueue_free(Priqueue *priqueue){  
+  bsem_reset(priqueue->hasjobs);
+  if (priqueue->current >= 2 ) {
+    unsigned int i;
+    for (i = 1; i <= priqueue->current; i++) priqueue_job_free(priqueue,priqueue->array[i]);
+  }
+
+  free(priqueue->head);
+  free(*priqueue->array);
+  free(priqueue->array);
+  free(priqueue);
+}
+
+MHEAP_API void priqueue_job_free(Priqueue *priqueue,job *job_p){
+  //if (node != NULL) free(node->data->data);
+  free(job_p);  
 }
 
 /* ======================== SYNCHRONISATION ========================= */
