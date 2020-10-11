@@ -5,8 +5,6 @@
 #include <string.h>
 #include <pthread.h>
 #include "thpool.h"
-#include "pqueue.h"
-#include "thpool_ex.h"
 #ifdef GPU
 #define BLOCK 512
 

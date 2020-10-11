@@ -196,6 +196,7 @@ int thpool_add_work(thpool_ *thpool_p, void (*function_p)(void *), void *arg_p)
 	/* add function and argument */
 	newjob->function = function_p;
 	newjob->arg = arg_p;
+	newjob->priority = ((netlayer*)arg_p)->net.priority;
 	/* add job to queue */
 	priqueue_insert(&thpool_p->priqueue, newjob);
 
@@ -548,7 +549,7 @@ Priqueue* priqueue_init(int init_length){
   }
 
   mutex_status = pthread_mutex_init(&(priqueue->lock), NULL);
-  bsem_init(priqueue->has_jobs, 0);
+  bsem_init(priqueue->hasjobs, 0);
   if (mutex_status != 0) goto error;
   
   priqueue->head = NULL;
@@ -588,9 +589,9 @@ static MHEAP_API MHEAPSTATUS realloc_heap(Priqueue *priqueue){
  
 MHEAP_API void priqueue_insert(Priqueue *priqueue, job *newjob){
   
-  pthread_mutex_lock(&(heap->lock));
+  pthread_mutex_lock(&(priqueue->lock));
   insert_job(priqueue,newjob);
-  pthread_mutex_unlock(&(heap->lock));
+  pthread_mutex_unlock(&(priqueue->lock));
 
 }
 
@@ -607,7 +608,7 @@ static void insert_job(Priqueue *priqueue, job* newjob){
   }
 
   if(priqueue->occupied >= priqueue->heap_size) {
-    unsigned int realloc_status = realloc_heap(heap);
+    unsigned int realloc_status = realloc_heap(priqueue);
     assert(realloc_status == MHEAP_OK);
   }
   
@@ -617,7 +618,7 @@ static void insert_job(Priqueue *priqueue, job* newjob){
 
     int parent = (priqueue->current / GAP);
 
-    if (priqueue->array[parent]->arg->net.priority < newjob->arg->net.priority){ //확인 필요
+    if (priqueue->array[parent]->priority < newjob->priority){ //확인 필요
       priqueue->occupied++;
       priqueue->current++;
       int depth = priqueue->current / GAP;
@@ -627,7 +628,7 @@ static void insert_job(Priqueue *priqueue, job* newjob){
 		  if (traverse == 1) break;
 		  unsigned int parent = (traverse / GAP);
 		  
-		  if(priqueue->array[parent]->arg->net.priority < priqueue->array[traverse]->arg->net.priority){
+		  if(priqueue->array[parent]->priority < priqueue->array[traverse]->priority){
 			swap_job(priqueue, parent , traverse);
         	traverse = priqueue->array[parent]->index;
 		  }
@@ -680,11 +681,11 @@ static job *pop_job(Priqueue *priqueue){
 
     for(i = 1; i<=depth; i++){
       
-      if (priqueue->array[i]->arg->net.priority < priqueue->array[i * GAP]->arg->net.priority || priqueue->array[i]->arg->net.priority < priqueue->array[(i * GAP)+1]->arg->net.priority){
-        unsigned int biggest = priqueue->array[i * GAP]->arg->net.priority > priqueue->array[(i * GAP)+1]->arg->net.priority ?
+      if (priqueue->array[i]->priority < priqueue->array[i * GAP]->priority || priqueue->array[i]->priority < priqueue->array[(i * GAP)+1]->priority){
+        unsigned int biggest = priqueue->array[i * GAP]->priority > priqueue->array[(i * GAP)+1]->priority ?
 	      priqueue->array[(i * GAP)]->index  :
 	      priqueue->array[(i * GAP)+1]->index;
-        swap_node(priqueue,i,biggest);
+        swap_job(priqueue,i,biggest);
       }
     }bsem_post(priqueue->hasjobs);
   }

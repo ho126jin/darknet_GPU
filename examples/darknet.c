@@ -608,13 +608,13 @@ int main()
     {
         vggNetwork[k] = (network *)load_network("cfg/vgg-16.cfg", "vgg-16.weights", 0);
         vggNetwork[k]->index_n = k + n_des + n_res;
-        vggNetwork[k]->prioirty = k + n_des + n_res;
+        vggNetwork[k]->priority = k + n_des + n_res;
     }
     for (k = 0; k < n_alex; k++)
     {
         alexNetwork[k] = (network *)load_network("cfg/alexnet.cfg", "alexnet.weights", 0);
         alexNetwork[k]->index_n = k + n_des + n_res + n_vgg;
-        alexNetwork[k]->prioirty = k + n_des + n_res + n_vgg;
+        alexNetwork[k]->priority = k + n_des + n_res + n_vgg;
     }
 //while(1){
 //    char c='n';

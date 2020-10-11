@@ -13,7 +13,6 @@ extern "C"
 	/* =================================== API ======================================= */
 
 	typedef struct thpool_* threadpool;
-
 	/**
 		  * @brief  Initialize threadpool
 		   *
@@ -170,24 +169,10 @@ extern "C"
 						  */
 	extern int thpool_num_threads_working(threadpool);
 
-	Priqueue *
-	priqueue_init(int);
-
-	void
-	priqueue_insert(Priqueue *, job *);
-
-	job *
-	priqueue_pop(Priqueue *);
-
-	void
-	priqueue_free(Priqueue *);
-
-	void
-	priqueue_job_free(Priqueue *, job *);
 #if 1 // 2020 0206 hojin
 	/* ========================== STRUCTURES ============================ */
-typedef struct _heap Priqueue;
 	/* Binary semaphore */
+	typedef struct _heap Priqueue;
 	typedef struct bsem
 	{
 		pthread_mutex_t mutex;
@@ -202,6 +187,7 @@ typedef struct _heap Priqueue;
 		void (*function)(void *arg); /* function pointer          */
 		void *arg;					 /* function's argument       */
 		int index;
+		int priority;
 	} job;
 
 	/* Job queue */
@@ -261,6 +247,21 @@ typedef struct _heap Priqueue;
 	} thpool_;
 
 	typedef struct _netlayer netlayer;
+
+	Priqueue *
+	priqueue_init(int);
+
+	void
+	priqueue_insert(Priqueue *, job *);
+
+	job *
+	priqueue_pop(Priqueue *);
+
+	void
+	priqueue_free(Priqueue *);
+
+	void
+	priqueue_job_free(Priqueue *, job *);
 
 #endif
 
