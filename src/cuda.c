@@ -83,10 +83,18 @@ void check_error_line(cudaError_t status, int line)
 #ifdef STREAM
     static cudaStream_t stream[50];
     static int init_stream[50] ={ 0, };
-    void set_stream(int num){
+    void set_stream(int num,int threshold){
         int i;
-        for(i=0;i<num;i++) 
-            cudaStreamCreateWithFlags(&(stream[i]), cudaStreamNonBlocking);
+        int priority_high, priority_low;
+        cudaDeviceGetStreamPriorityRange(&priority_low, &priority_high);
+
+        for(i=0;i<num;i++)
+        // create streams with highest and lowest available priorities
+        if(i>=threshold)
+            cudaStreamCreateWithPriority(&(stream[i]), cudaStreamNonBlocking, priority_high);
+        else
+            cudaStreamCreateWithPriority(&(stream[i]), cudaStreamNonBlocking, priority_low); 
+            //cudaStreamCreateWithPriority(&(stream[i]), cudaStreamNonBlocking,);
     }
     
 #endif
@@ -183,21 +191,6 @@ dim3 cuda_gridsize(size_t n)
     //printf("%ld %ld %ld %ld\n", n, x, y, x*y*BLOCK);
     return d;
 }
-
-#ifdef CUDNN
-cudnnHandle_t cudnn_handle()
-{
-    static int init[16] ={ 0 };
-    static cudnnHandle_t handle[16];
-    int i = cuda_get_device();
-    if (!init[i])
-    {
-        cudnnCreate(&handle[i]);
-        init[i] = 1;
-    }
-    return handle[i];
-}
-#endif
 
 static int init_blas[32] ={ 0 };
 static cublasHandle_t handle_blas[32];

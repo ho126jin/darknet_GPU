@@ -465,6 +465,9 @@ int *cond_i;
 #define n_res 0
 #define n_alex 0
 #define n_vgg 0
+
+#define THRESHOLD 4
+
 double gpu_total_time = 0;
 #define cpu_thread 0
 #define gpu_thread 8
@@ -565,8 +568,6 @@ int main()
     network *alexNetwork[n_alex];
 
     int i = 0;
-    //stream 아래로 내려가야함
-    //cudnn_handle_set_stream(n_all);
 #ifdef THREAD
     //변수 동적할당
     cond_t = (pthread_cond_t *)malloc(sizeof(pthread_cond_t) * n_all);
@@ -627,7 +628,7 @@ int main()
 // **********************stream 자리**************
 
 #ifdef STREAM
-    set_stream(n_all);
+    set_stream(n_all,THRESHOLD);
 #endif
  
 #ifdef CUDNN

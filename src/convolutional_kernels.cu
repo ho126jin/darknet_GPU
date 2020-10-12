@@ -88,7 +88,7 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
 
 #ifdef CUDNN
     float one = 1;
-    cudnnConvolutionForward(cudnn_handle(),
+    cudnnConvolutionForward(cudnn_handle(0),
                 &one,
                 l.srcTensorDesc,
                 net.input_gpu,
@@ -154,8 +154,6 @@ void forward_convolutional_layer_gpu(convolutional_layer l, network net)
 #ifdef THREAD
 void forward_convolutional_layer_gpu_thread(netlayer* input)
 {
-     
-
     network net = input->net;
     layer l = input->layer;
  
@@ -191,7 +189,22 @@ void forward_convolutional_layer_gpu_thread(netlayer* input)
 
 #ifdef CUDNN
     float one = 1;
-    cudnnConvolutionForward(cudnn_handle(),
+    #ifdef STREAM
+    cudnnConvolutionForward(cudnn_handle(net.index_n),
+            &one,
+            l.srcTensorDesc,
+            net.input_gpu,
+            l.weightDesc,
+            l.weights_gpu,
+            l.convDesc,
+            l.fw_algo,
+            net.workspace_gpu,
+            l.workspace_size_cudnn,
+            &one,
+            l.dstTensorDesc,
+            l.output_gpu);
+    #else
+    cudnnConvolutionForward(cudnn_handle(0),
                 &one,
                 l.srcTensorDesc,
                 net.input_gpu,
@@ -204,7 +217,7 @@ void forward_convolutional_layer_gpu_thread(netlayer* input)
                 &one,
                 l.dstTensorDesc,
                 l.output_gpu);
-
+    #endif
 #else
     int i, j;
     int m = l.n/l.groups;
@@ -315,7 +328,7 @@ void backward_convolutional_layer_gpu(convolutional_layer l, network net)
     if(l.xnor) net.input_gpu = l.binary_input_gpu;
 #ifdef CUDNN
     float one = 1;
-    cudnnConvolutionBackwardFilter(cudnn_handle(),
+    cudnnConvolutionBackwardFilter(cudnn_handle(0),
             &one,
             l.srcTensorDesc,
             net.input_gpu,
@@ -331,7 +344,7 @@ void backward_convolutional_layer_gpu(convolutional_layer l, network net)
 
     if(net.delta_gpu){
         if(l.binary || l.xnor) swap_binary(&l);
-        cudnnConvolutionBackwardData(cudnn_handle(),
+        cudnnConvolutionBackwardData(cudnn_handle(0),
                 &one,
                 l.weightDesc,
                 l.weights_gpu,
