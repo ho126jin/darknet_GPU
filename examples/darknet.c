@@ -530,7 +530,7 @@ static int pwr_ind_finish =0;
 // 	}
 // 	fclose(fp);	
 // }
-FILE * timing;
+//FILE * timing;
 
 int main()
 {
@@ -543,7 +543,7 @@ int main()
         cuda_set_device(gpu_index);
     }
     cudaSetDeviceFlags(cudaDeviceMapHost);
-    timing = fopen("thread_cpu.txt","a+");
+    //timing = fopen("thread_cpu.txt","a+");
 #endif
     int n_all = n_des+n_res+n_vgg+n_alex;
 #ifdef THREAD
@@ -780,9 +780,10 @@ cudaProfilerStart();
     for(i=0; i<THREAD_NUM_POOL;i++)
 	    pthread_join(thpool->threads[i]->pthread, NULL);
 #endif
-   FILE *fp =fopen("exetime.txt", "a+");
+   //FILE *fp =fopen("exetime.txt", "a+");
     fprintf(stderr, "\n execution Time : %lf\n", what_time_is_it_now() - time);
 	cudaProfilerStop();
+    /*
     if (fp)
     {
         fprintf(fp, "%lf\n", what_time_is_it_now() - time);
@@ -793,7 +794,7 @@ cudaProfilerStart();
         exit(1);
     }
     fclose(fp);
-
+    */
 //kmsjames 2020 0819 for power mon
     pwr_ind_finish = 1;    
 
