@@ -198,6 +198,7 @@ int thpool_add_work(thpool_ *thpool_p, void (*function_p)(void *), void *arg_p)
 	newjob->arg = arg_p;
 	newjob->priority = ((netlayer*)arg_p)->net.priority;
 	/* add job to queue */
+	printf("priqueue insert\n");
 	priqueue_insert(&thpool_p->priqueue, newjob);
 
 	return 0;
@@ -588,11 +589,11 @@ static MHEAP_API MHEAPSTATUS realloc_heap(Priqueue *priqueue){
 
  
 MHEAP_API void priqueue_insert(Priqueue *priqueue, job *newjob){
-  
+  printf("priqueue_insert in\n");
   pthread_mutex_lock(&(priqueue->lock));
   insert_job(priqueue,newjob);
   pthread_mutex_unlock(&(priqueue->lock));
-
+  printf("priqueue_insert out\n");
 }
 
 static void insert_job(Priqueue *priqueue, job* newjob){
