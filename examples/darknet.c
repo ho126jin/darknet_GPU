@@ -461,10 +461,10 @@ int *cond_i;
 #define n_net 8 //hojin 8->2
 
 //hojin each networknum
-#define n_des 1
+#define n_des 10
 #define n_res 0
 #define n_alex 0
-#define n_vgg 0
+#define n_vgg 6
 double gpu_total_time = 0;
 #define cpu_thread 0
 #define gpu_thread 8
@@ -691,7 +691,6 @@ cudaProfilerStart();
         net_input_des[i]->input_path = buff;
         net_input_des[i]->names = names;
         net_input_des[i]->netName = denseName;
-        net_input_des[i]->net->priority =  
         printf(" It's turn for des i = %d\n", i);
         if (pthread_create(&networkArray_des[i], NULL, (void *)predict_classifier2, net_input_des[i]) < 0)
         {

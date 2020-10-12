@@ -269,7 +269,7 @@ void forward_network(network *netp)
 
         nl.layer = l;
         nl.net = net;
-        nl.flag = 0;
+        nl.flag = 1;
         //이 위치에 priorityqueue? thpool_add_work 에서 jobq대신 priqueue
         //lastFlag = add_job(twin_thp, forward_function, &nl, lastFlag, routeOrShort);
     //    printf("Before thpool_add_work\n");
