@@ -398,9 +398,12 @@ static void *thread_do(struct thread *thread_p)
 			/* Read job from queue and execute it*/
 			void (*func_buff)(void *);
 			void *arg_buff;
+			printf("before pop\n");
 			job *job_p = priqueue_pop(thpool_p->priqueue);
+			printf("after pop\n");
 			if (job_p)
 			{
+				printf("if job_p\n");
 				func_buff = job_p->function;
 				arg_buff = job_p->arg;
 				//thread_p->exe_time = job_p->exe_time;
@@ -417,11 +420,11 @@ static void *thread_do(struct thread *thread_p)
 			}
 			pthread_mutex_unlock(&thpool_p->thcount_lock);
 		}
+	printf("thread_do done\n");
 	}
 	pthread_mutex_lock(&thpool_p->thcount_lock);
 	thpool_p->num_threads_alive--;
-	pthread_mutex_unlock(&thpool_p->thcount_lock);
-
+	pthread_mutex_unlock(&thpool_p->thcount_lock);;
 	return NULL;
 }
 
@@ -592,9 +595,10 @@ static MHEAP_API MHEAPSTATUS realloc_heap(Priqueue *priqueue){
 void priqueue_insert(Priqueue *priqueue, struct job *newjob){
   //printf("priqueue_insert in\n");
   pthread_mutex_lock(&(priqueue->lock));
-  insert_job(priqueue,newjob);
+  insert_job(priqueue,newjob);  
+  bsem_post(priqueue->hasjobs);
   pthread_mutex_unlock(&(priqueue->lock));
-  //printf("priqueue_insert out\n");
+  printf("priqueue_insert out\n");
 }
 
 static void insert_job(Priqueue *priqueue, struct job* newjob){
@@ -643,7 +647,6 @@ static void insert_job(Priqueue *priqueue, struct job* newjob){
     }
   }
   printf("pri_add_out\n");
-  bsem_post(priqueue->hasjobs);
 }
 
 void swap_job(Priqueue *priqueue, unsigned int parent, unsigned int child){
@@ -690,7 +693,8 @@ static job *pop_job(Priqueue *priqueue){
 	      priqueue->array[(i * GAP)+1]->index;
         swap_job(priqueue,i,biggest);
       }
-    }bsem_post(priqueue->hasjobs);
+    }if(priqueue->current != 1)
+    	bsem_post(priqueue->hasjobs);
   }
 
   return job_p;
