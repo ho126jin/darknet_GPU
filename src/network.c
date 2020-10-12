@@ -272,9 +272,9 @@ void forward_network(network *netp)
         nl.flag = 0;
         //이 위치에 priorityqueue? thpool_add_work 에서 jobq대신 priqueue
         //lastFlag = add_job(twin_thp, forward_function, &nl, lastFlag, routeOrShort);
-        printf("Before thpool_add_work\n");
+    //    printf("Before thpool_add_work\n");
        	thpool_add_work(thpool,forward_function,&nl);
-	printf("After thpool_add_work\n");
+//	printf("After thpool_add_work\n");
         while (cond_i[net.index_n] == 1)
         {
             pthread_cond_wait(&cond_t[net.index_n], &mutex_t[net.index_n]);

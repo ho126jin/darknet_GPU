@@ -150,7 +150,7 @@ struct thpool_ *thpool_init(int num_threads, int n_all)
 	if (thpool_p->threads == NULL)
 	{
 		err("thpool_init(): Could not allocate memory for threads\n");
-		priqueue_free(&thpool_p->priqueue);
+		priqueue_free(thpool_p->priqueue);
 		free(thpool_p);
 		return NULL;
 	}
@@ -198,8 +198,8 @@ int thpool_add_work(thpool_ *thpool_p, void (*function_p)(void *), void *arg_p)
 	newjob->arg = arg_p;
 	newjob->priority = ((netlayer*)arg_p)->net.priority;
 	/* add job to queue */
-	printf("priqueue insert\n");
-	priqueue_insert(&thpool_p->priqueue, newjob);
+//	printf("priqueue insert\n");
+	priqueue_insert(thpool_p->priqueue, newjob);
 
 	return 0;
 }
@@ -395,10 +395,10 @@ static void *thread_do(struct thread *thread_p)
 			thpool_p->num_threads_working++;
 			pthread_mutex_unlock(&thpool_p->thcount_lock);
 
-			/* Read job from queue and execute it */
+			/* Read job from queue and execute it*/
 			void (*func_buff)(void *);
 			void *arg_buff;
-			job *job_p = priqueue_pop(&thpool_p->priqueue);
+			job *job_p = priqueue_pop(thpool_p->priqueue);
 			if (job_p)
 			{
 				func_buff = job_p->function;
@@ -560,11 +560,12 @@ Priqueue* priqueue_init(int init_length){
   priqueue->array = malloc(qsize) MPANIC(priqueue->array);
 
   memset(priqueue->array, 0x00, qsize);
-
+  
   return priqueue;
   
  error:
   free(priqueue);
+  printf("stop\n");
 
   return NULL;
 }
@@ -588,23 +589,23 @@ static MHEAP_API MHEAPSTATUS realloc_heap(Priqueue *priqueue){
 }
 
  
-MHEAP_API void priqueue_insert(Priqueue *priqueue, job *newjob){
-  printf("priqueue_insert in\n");
+void priqueue_insert(Priqueue *priqueue, struct job *newjob){
+  //printf("priqueue_insert in\n");
   pthread_mutex_lock(&(priqueue->lock));
   insert_job(priqueue,newjob);
   pthread_mutex_unlock(&(priqueue->lock));
-  printf("priqueue_insert out\n");
+  //printf("priqueue_insert out\n");
 }
 
-static void insert_job(Priqueue *priqueue, job* newjob){
-
+static void insert_job(Priqueue *priqueue, struct job* newjob){
+  printf("add\n");
   if (priqueue->current == 1 && priqueue->array[1] == NULL){
     priqueue->head = newjob;
     priqueue->array[1] = newjob;
     priqueue->array[1]->index = priqueue->current;
     priqueue->occupied++;
     priqueue->current++;
-
+    
     return;
   }
 
@@ -641,6 +642,7 @@ static void insert_job(Priqueue *priqueue, job* newjob){
     	priqueue->current++;
     }
   }
+  printf("pri_add_out\n");
   bsem_post(priqueue->hasjobs);
 }
 
