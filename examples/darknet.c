@@ -549,7 +549,7 @@ int main()
     cudaSetDeviceFlags(cudaDeviceMapHost);
     //timing = fopen("thread_cpu.txt","a+");
 #endif
-    //int n_all = n_des+n_res+n_vgg+n_alex;
+    int n_all = n_des+n_res+n_vgg+n_alex;
 #ifdef THREAD
     //twin_thp = twin_thpool_init(cpu_thread,gpu_thread);
     thpool = thpool_init(gpu_thread,n_all);
