@@ -28,6 +28,14 @@ extern "C"
     //extern twin_thpool *twin_thp;
 #define THREAD_NUM_POOL 8 // no use
 #define n_loop 16 //hojin # of loop classifier2 no use
+
+#define n_des 16
+#define n_res 0
+#define n_alex 0
+#define n_vgg 0
+
+#define n_all n_des+n_res+n_vgg+n_alex
+
 #ifdef THREAD
     extern pthread_cond_t *cond_t;
     extern pthread_mutex_t *mutex_t;

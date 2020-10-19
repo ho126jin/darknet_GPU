@@ -81,8 +81,8 @@ void check_error_line(cudaError_t status, int line)
 }
 
 #ifdef STREAM
-    static cudaStream_t stream[50];
-    static int init_stream[50] ={ 0, };
+    static cudaStream_t stream[n_all];
+    static int init_stream[n_all] ={ 0, };
     void set_stream(int num,int threshold){
         int i;
         int priority_high, priority_low;
@@ -100,8 +100,8 @@ void check_error_line(cudaError_t status, int line)
 #endif
 
 #ifdef CUDNN
-    static cudnnHandle_t handle[50];
-    static int init_[50] ={0,};
+    static cudnnHandle_t handle[n_all];
+    static int init_[n_all] ={0,};
     void cudnn_handle_set(int num)
     {
         int i;

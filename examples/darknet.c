@@ -461,11 +461,12 @@ int *cond_i;
 #define n_net 8 //hojin 8->2
 
 //hojin each networknum
+/*
 #define n_des 16
 #define n_res 0
 #define n_alex 0
 #define n_vgg 0
-
+*/
 #define THRESHOLD 4
 
 double gpu_total_time = 0;
@@ -548,7 +549,7 @@ int main()
     cudaSetDeviceFlags(cudaDeviceMapHost);
     //timing = fopen("thread_cpu.txt","a+");
 #endif
-    int n_all = n_des+n_res+n_vgg+n_alex;
+    //int n_all = n_des+n_res+n_vgg+n_alex;
 #ifdef THREAD
     //twin_thp = twin_thpool_init(cpu_thread,gpu_thread);
     thpool = thpool_init(gpu_thread,n_all);
