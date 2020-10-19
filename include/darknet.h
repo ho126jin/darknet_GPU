@@ -917,7 +917,7 @@ extern double gpu_total_time;
     float rand_uniform(float min, float max);
     network *copy_network(network *);
 #ifdef STREAM
-    void set_stream(int num);
+    void set_stream(int num,int threshold);
     void add_bias_gpu_stream(float *output, float *biases, int batch, int n, int size, int id);
     void fill_gpu_stream(int N, float ALPHA, float *X, int INCX, int id);
 #endif
