@@ -91,12 +91,13 @@ void check_error_line(cudaError_t status, int line)
 
         for(i=0;i<num;i++)
         // create streams with highest and lowest available priorities
-        if(i>=threshold)
+        if(i>=threshold){
             cudaStreamCreateWithPriority(&(stream[i]), cudaStreamNonBlocking, priority_high);
             nvtxNameCudaStreamA(stream[i],i);
-        else
+	} else{
             cudaStreamCreateWithPriority(&(stream[i]), cudaStreamNonBlocking, priority_low); 
             nvtxNameCudaStreamA(stream[i],i);
+	}
     }
     
 #endif
