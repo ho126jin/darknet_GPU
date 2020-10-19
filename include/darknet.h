@@ -29,12 +29,12 @@ extern "C"
 #define THREAD_NUM_POOL 8 // no use
 #define n_loop 16 //hojin # of loop classifier2 no use
 
-#define n_des 16
-#define n_res 0
-#define n_alex 0
-#define n_vgg 0
+#define n_des 2
+#define n_res 2
+#define n_alex 2
+#define n_vgg 2
 
-#define n_all n_des+n_res+n_vgg+n_alex
+#define n_a n_des+n_res+n_vgg+n_alex
 
 #ifdef THREAD
     extern pthread_cond_t *cond_t;
