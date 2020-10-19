@@ -93,10 +93,10 @@ void check_error_line(cudaError_t status, int line)
         // create streams with highest and lowest available priorities
         if(i>=threshold)
             cudaStreamCreateWithPriority(&(stream[i]), cudaStreamNonBlocking, priority_high);
-            nvtxNameCudaStreamA(stream[i],"Network %d",i);
+            nvtxNameCudaStreamA(stream[i],i);
         else
             cudaStreamCreateWithPriority(&(stream[i]), cudaStreamNonBlocking, priority_low); 
-            nvtxNameCudaStreamA(stream[i],"Network %d",i);
+            nvtxNameCudaStreamA(stream[i],i);
     }
     
 #endif
