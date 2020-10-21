@@ -9,7 +9,6 @@ int gpu_index = 0;
 #include <assert.h>
 #include <stdlib.h>
 #include <time.h>
-#include <nvToolsExtCudaRt.h>
 #include "cuda_profiler_api.h"
 
 static int check = 0;
@@ -93,10 +92,8 @@ void check_error_line(cudaError_t status, int line)
         // create streams with highest and lowest available priorities
         if(i>=threshold){
             cudaStreamCreateWithPriority(&(stream[i]), cudaStreamNonBlocking, priority_high);
-            nvtxNameCudaStreamA(stream[i],i);
 	} else{
             cudaStreamCreateWithPriority(&(stream[i]), cudaStreamNonBlocking, priority_low); 
-            nvtxNameCudaStreamA(stream[i],i);
 	}
     }
     
