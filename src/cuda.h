@@ -15,6 +15,7 @@ float cuda_compare(float *x_gpu, float *x, size_t n, char *s);
 dim3 cuda_gridsize(size_t n);
 void cuda_synchronize(int id, int line);
 cudaStream_t usedstream(int id);
+void network_num(int index);
 #ifdef CUDNN
 cudnnHandle_t cudnn_handle(int id);
 #endif
