@@ -7,5 +7,5 @@ extern "C" {
 }
 
 __global__ void network_num(int index){
-    network_num<<<index,index>>>(index);
+    int sum = index+index;
 }
