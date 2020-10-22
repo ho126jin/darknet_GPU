@@ -8,7 +8,7 @@ extern "C" {
 
 __global__ void network_num_kernel(int index){
     int sum = 1;
-    int sum += 1;
+    sum += 1;
 }
 
 void network_num(int index){
