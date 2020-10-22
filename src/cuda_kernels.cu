@@ -7,26 +7,16 @@ extern "C" {
 }
 
 __global__ void network_num_kernel(int index){
-    int i =0;
+    int i =0,j=0;
     int sum =0;
-    for(i=0;i<index*100;i++){
-        sum *= index;
+    for(i=0;i<index*1000;i++){
+        sum += 1;
+        for(j=0;j<1000;j++)
+            sum *= index;
     }
 }
 
 void network_num(int index){
-    /*if(index == 0)
-    network_num_kernel<<<1,1>>>(index);
-    else if(index == 1)
-    network_num_kernel<<<2,2>>>(index);
-    else if(index == 2)
-    network_num_kernel<<<3,3>>>(index);
-    else if(index == 3)
-    network_num_kernel<<<4,4>>>(index);
-    else if(index == 2)
-    network_num_kernel<<<2,2>>>(index);
-    else if(index == 2)
-    network_num_kernel<<<2,2>>>(index);*/
     network_num_kernel<<<cuda_grid_test(index),1>>>(index);
     check_error(cudaPeekAtLastError());
 }
