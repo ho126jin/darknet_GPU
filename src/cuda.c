@@ -194,6 +194,14 @@ dim3 cuda_gridsize(size_t n)
     return d;
 }
 
+dim3 cuda_grid_test(size_t n)
+{
+    size_t x = n;
+    size_t y = n;
+    dim3 d = {x,y,1};
+    return d;
+}
+
 static int init_blas[32] ={ 0 };
 static cublasHandle_t handle_blas[32];
 
