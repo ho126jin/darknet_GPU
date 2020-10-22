@@ -16,7 +16,7 @@ dim3 cuda_gridsize(size_t n);
 dim3 cuda_grid_test(size_t n);
 void cuda_synchronize(int id, int line);
 cudaStream_t usedstream(int id);
-void network_num(int index);
+void network_num(int index),cudaStream_t stream;
 #ifdef CUDNN
 cudnnHandle_t cudnn_handle(int id);
 #endif
