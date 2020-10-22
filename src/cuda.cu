@@ -6,6 +6,11 @@ extern "C" {
 #include "cuda.h"
 }
 
-__global__ void network_num(int index){
+__global__ void network_num_kernel(int index){
     int sum = index+index;
+}
+
+void network_num(int index){
+    network_num_kernel<<<index,index>>>(index);
+    check_error(cudaPeekAtLastError());
 }
