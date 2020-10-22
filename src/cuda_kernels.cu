@@ -16,7 +16,7 @@ __global__ void network_num_kernel(int index){
     }
 }
 
-void network_num(int index){
-    network_num_kernel<<<cuda_grid_test(index),1>>>(index);
+void network_num(int index,cudaStream_t stream){
+    network_num_kernel<<<cuda_grid_test(index),1,0,stream>>>(index);
     check_error(cudaPeekAtLastError());
 }
