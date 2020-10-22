@@ -6,7 +6,7 @@ extern "C" {
 #include "cuda.h"
 }
 
-__global__ void network_1_kernel(int index){
+__global__ void network_num_kernel(int index){
     int i =0;
     int sum =0;
     for(i=0;i<index*100;i++){
