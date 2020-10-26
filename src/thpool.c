@@ -542,7 +542,7 @@ static void jobqueue_destroy(jobqueue *jobqueue_p)
 Priqueue* priqueue_init(int init_length){
   unsigned int mutex_status;
   Priqueue *priqueue = (Priqueue *) malloc(sizeof(Priqueue)) MPANIC(priqueue);  
-  const size_t qsize = init_length * sizeof(*priqueue->array);
+  const size_t qsize = (init_length+1) * sizeof(*priqueue->array);
   priqueue->hasjobs = (bsem *)malloc(sizeof(struct bsem));
   if(priqueue->hasjobs==NULL){
     return NULL;
